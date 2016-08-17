@@ -3,6 +3,7 @@ import numpy
 class SweepMesh(object):
 	def __init__(self):
 		self.has_mesh = False
+		self.mesh     = numpy.array([])
 		self.complete = False
 
 	def from_array(self,array):
@@ -28,7 +29,7 @@ class SweepMesh(object):
 		self.axis_positions = [0 for n in range(self.n_axes)]
 		self.has_mesh       = True
 
-	def from_lincombs(self,axis_lengths,lincombs):
+	def generate(self,axis_lengths,lincombs):
 		"""mesh[x,y,z,...][n] = lincombs[n][0] + x*lincombs[n][1] + y*lincombs[n][2] + ..."""
 		if self.has_mesh:raise ValueError("Mesh already generated/loaded")
 		n_combs   = len(lincombs)
@@ -62,7 +63,7 @@ class SweepMesh(object):
 				done = True
 		return ret
 
-
+# examples
 if __name__ == '__main__':
 	l = SweepMesh()
 	l.from_lincombs([2,3],[ [0.0,1.0,2.0], [1.0,0.5,0.5], [0.0,0.0,0.0] ])
