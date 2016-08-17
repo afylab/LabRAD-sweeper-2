@@ -1,14 +1,14 @@
-class SettingObject(object):
+class Setting(object):
 	def __init__(self,connection=None):
 		self.connection = connection
 
 		self.kind    = None  # what kind of setting this is. 'vds' or 'dev'
 		self.setting = None  # the setting object (instance of VDSSetting, DeviceGetSetting, or DeviceSetSetting.)
-		                     # These classes have common menthods called by the SettingObject class.
+		                     # These classes have common menthods called by the Setting class.
 
-		self.connected   = not (connection is None) # Whether or not the SettingObject has been given a connection
-		self.has_setting = False                    # Whether or not the SettingObject has been given a setting
-		self.ready       = False                    # Whether or not the SettingObject has been completed.
+		self.connected   = not (connection is None) # Whether or not the Setting has been given a connection
+		self.has_setting = False                    # Whether or not the Setting has been given a setting
+		self.ready       = False                    # Whether or not the Setting has been completed.
 
 	def get(self):
 		if not self.ready:raise ValueError("Not ready to do get/set. Please ensure that the connection and setting have both been added.")
@@ -19,7 +19,7 @@ class SettingObject(object):
 		return self.setting.set(value)
 
 	def connect(self,connection):
-		"""Supplies a LabRAD connection to the SettingObject. Not necessary if one was supplied on init."""
+		"""Supplies a LabRAD connection to the Setting. Not necessary if one was supplied on init."""
 		if self.connected:raise ValueError("Already connected")
 
 		self.connection = connection
@@ -171,31 +171,31 @@ if __name__ == '__main__':
 	import labrad
 	c = labrad.connect()
 
-	s1 = SettingObject(c)
+	s1 = Setting(c)
 	s1.vds('3004')
 	print(s1.set(1))
 	print(s1.get())
 	print("")
 
-	s2 = SettingObject()
+	s2 = Setting()
 	s2.connect(c)
 	s2.vds('','DC7')
 	print(s2.set(250))
 	print("")
 
-	s3 = SettingObject()
+	s3 = Setting()
 	s3.vds('3004')
 	s3.connect(c)
 	print(s3.set(0.5))
 	print("")
 
-	s4 = SettingObject()
+	s4 = Setting()
 	s4.dev_set(['ad5764_dcbox','ad5764_dcbox (COM28)','set_voltage'],[3],1)
 	s4.connect(c)
 	print(s4.set(0.250))
 	print("")
 
-	s5 = SettingObject(c)
+	s5 = Setting(c)
 	s5.dev_get(['ad5764_dcbox','ad5764_dcbox (COM28)','get_voltage'],[3])
 	print(s5.get())
 	print('')
