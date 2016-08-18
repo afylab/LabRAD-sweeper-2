@@ -2,7 +2,7 @@ import numpy
 
 class Axis(object):
 	def __init__(self,start,end,points):
-		if points < 2:raise ValueError("Axis points must be at least 2")
+		if points < 2:raise ValueError("Axis points (number of positions) must be at least 2. An axis of length 1 has no variation.")
 		self.start  = start
 		self.end    = end
 		self.rng    = start-end

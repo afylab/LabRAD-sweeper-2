@@ -1,6 +1,7 @@
 class Setting(object):
-	def __init__(self,connection=None):
-		self.connection = connection
+	def __init__(self,connection=None,max_ramp_speed=None):
+		self.connection     = connection
+		self.max_ramp_speed = max_ramp_speed
 
 		self.kind    = None  # what kind of setting this is. 'vds' or 'dev'
 		self.setting = None  # the setting object (instance of VDSSetting, DeviceGetSetting, or DeviceSetSetting.)
@@ -17,6 +18,9 @@ class Setting(object):
 	def set(self,value):
 		if not self.ready:raise ValueError("Not ready to do get/set. Please ensure that the connection and setting have both been added.")
 		return self.setting.set(value)
+
+	def set_max_ramp_speed(self,max_ramp_speed):
+		self.max_ramp_speed = max_ramp_speed
 
 	def connect(self,connection):
 		"""Supplies a LabRAD connection to the Setting. Not necessary if one was supplied on init."""
@@ -171,32 +175,32 @@ if __name__ == '__main__':
 	import labrad
 	c = labrad.connect()
 
-	s1 = Setting(c)
-	s1.vds('3004')
-	print(s1.set(1))
-	print(s1.get())
-	print("")
+	s1 = Setting(c)  # connection can either be passed during init, or given later by the Setting.connect(connection) command
+	s1.vds('3004')   # configure the Setting as a VDS channel
+	print(s1.set(1)) # set values with .set(v)
+	print(s1.get())  # get values with .get()
+	print("")        # 'vds' settings can do both get and set, but only if the channel they've been given can get and set.
 
-	s2 = Setting()
-	s2.connect(c)
-	s2.vds('','DC7')
+	s2 = Setting()   # Here we initialize without a connection
+	s2.connect(c)    # So we need to give it a connection before using it
+	s2.vds('','DC7') # configure the Setting as VDS channel (this time specifying name rahter than ID)
 	print(s2.set(250))
 	print("")
 
-	s3 = Setting()
-	s3.vds('3004')
-	s3.connect(c)
+	s3 = Setting() # 
+	s3.vds('3004') # note that we can perform configuration and connection in any order
+	s3.connect(c)  # here we connect after configuring the Setting.
 	print(s3.set(0.5))
 	print("")
 
 	s4 = Setting()
-	s4.dev_set(['ad5764_dcbox','ad5764_dcbox (COM28)','set_voltage'],[3],1)
+	s4.dev_set(['ad5764_dcbox','ad5764_dcbox (COM28)','set_voltage'],[3],1) # Here we configure the Setting as a device server setting of the "set" type
 	s4.connect(c)
 	print(s4.set(0.250))
 	print("")
 
 	s5 = Setting(c)
-	s5.dev_get(['ad5764_dcbox','ad5764_dcbox (COM28)','get_voltage'],[3])
+	s5.dev_get(['ad5764_dcbox','ad5764_dcbox (COM28)','get_voltage'],[3]) # Here we configure the Setting as a device server setting of the "get" type
 	print(s5.get())
 	print('')
 
