@@ -1,8 +1,9 @@
 class Setting(object):
-	def __init__(self,connection=None,max_ramp_speed=None):
+	def __init__(self,connection=None,max_ramp_speed=None,label=None):
 		self.connection     = connection
 		self.max_ramp_speed = max_ramp_speed
 
+		self.label   = label if label else None
 		self.kind    = None  # what kind of setting this is. 'vds' or 'dev'
 		self.setting = None  # the setting object (instance of VDSSetting, DeviceGetSetting, or DeviceSetSetting.)
 		                     # These classes have common menthods called by the Setting class.
@@ -19,6 +20,9 @@ class Setting(object):
 		if not self.ready:raise ValueError("Not ready to do get/set. Please ensure that the connection and setting have both been added.")
 		return self.setting.set(value)
 
+	def label(self):
+		return self.label
+
 	def set_max_ramp_speed(self,max_ramp_speed):
 		self.max_ramp_speed = max_ramp_speed
 
@@ -31,6 +35,17 @@ class Setting(object):
 
 		if self.has_setting:
 			self.setting.connect(connection)
+
+			if self.label is None:
+				# label detection for 'vds' kind
+				if self.kind == 'vds':
+					self.label=self.setting.details[2] if self.setting.details[2] else None
+					if label == None:raise ValueError("Label has not been specified by user or by VDS")
+
+				# label detection for 'dev' kind
+				if self.kind == 'dev':
+					self.label = self.setting.setting[2]
+
 			self.ready = True
 
 	def vds(self,ID,name=None):
@@ -43,6 +58,11 @@ class Setting(object):
 
 		if self.connected:
 			self.setting.connect(self.connection)
+
+			if self.label is None:
+				self.label=self.setting.details[2] if self.setting.details[2] else None
+				if label == None:raise ValueError("Label has not been specified by user or by VDS")
+
 			self.ready = True
 
 	def dev_get(self,setting,inputs):
@@ -55,6 +75,10 @@ class Setting(object):
 
 		if self.connected:
 			self.setting.connect(self.connection)
+
+			if self.label is None:
+				self.label = self.setting.setting[2]
+				
 			self.ready = True
 
 	def dev_set(self,setting,inputs,var_slot):
@@ -67,6 +91,8 @@ class Setting(object):
 
 		if self.connected:
 			self.setting.connect(self.connection)
+			if self.label is None:
+				self.label = self.setting.setting[2]
 			self.ready = True
 
 
