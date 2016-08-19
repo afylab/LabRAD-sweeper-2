@@ -118,7 +118,7 @@ class Sweeper(object):
 			
 			if not s.has_get:raise ValueError("Specified VDS channel does not have a 'get' command and therefore cannot be recorded.")
 			
-			self._swp.append(s) # This will only be called if no error is thrown (so the setting is guaranteed to be valid)
+			self._rec.append(s) # This will only be called if no error is thrown (so the setting is guaranteed to be valid)
 
 		elif kind == 'dev':
 			if (setting is None) or (inputs is None):
@@ -126,9 +126,9 @@ class Sweeper(object):
 			if not ((name is None) and (ID is None)):
 				print("Warning: specified name and/or ID for a 'dev' type setting. These are properties for the 'vds' type setting, and will be ignored.")
 			
-			e = setting(self._cxn,label=label)
+			s = Setting(self._cxn,label=label)
 			s.dev_get(setting,inputs)
-			self._swp.append(s)
+			self._rec.append(s)
 
 		else:
 			raise ValueError("'kind' must be 'vds' (for a Virtual Device Server setting) or 'dev' (for a LabRAD Device Server setting). Got {kind} instead.".format(kind=kind))
@@ -173,8 +173,8 @@ class Sweeper(object):
 		if self._mode != 'sweep':raise ValueError("This function is only usable in sweep mode")
 
 		# DataSet object (self._dataset) creation
-		axis_parameter = [ ["axis_details",        [ [axis.start,axis.end,axis.points] for axis in self._axes     ]] ] # start value, end value, and number of points for each axis
-		comb_parameter = [ ["linear_combinations", [ [float(c) for c in comb]          for comb in self._lincombs ]] ] # linear combinations for each swept setting
+		axis_parameter = [ ["axis_details"       , '**i', [ [axis.start,axis.end,axis.points] for axis in self._axes     ]] ] # start value, end value, and number of points for each axis
+		comb_parameter = [ ["linear_combinations", '**v', [ [float(c) for c in comb]          for comb in self._lincombs ]] ] # linear combinations for each swept setting
 
 		comments = [
 			["Created by LabRAD-Sweeper-2","computer"],
@@ -182,15 +182,15 @@ class Sweeper(object):
 
 		axis_pos_indep = [ ['axis_{n}_pos'.format(n=n),'i'] for n in range(len(self._axes)) ] # independent variables representing the positions for each axis
 		axis_val_indep = [ ['axis_{n}_val'.format(n=n),'v'] for n in range(len(self._axes)) ] # independent variables representing the values    for each axis
-		settings_indep = [ [setting.label()           ,'v'] for setting in self._swp        ] # independent variables representing the values    for each swept    setting
-		dependents     = [ [setting.label()           ,'v'] for setting in self._rec        ] # dependent   variables representing the values    for each recorded setting
+		settings_indep = [ [setting.getlabel()           ,'v'] for setting in self._swp        ] # independent variables representing the values    for each swept    setting
+		dependents     = [ [setting.getlabel()           ,'v'] for setting in self._rec        ] # dependent   variables representing the values    for each recorded setting
 
 		self._dataset = DataSet(           # we don't include the name & location yet so that the user can choose when to specify them.
 			axis_pos_indep+settings_indep, # independent variables. For now we don't include the axis_val_indeps
 			dependents,                    # dependent   variables.
 			)
 		self._dataset.add_comments(comments)
-		self._dataset.add_parameters([axis_parameter,comb_parameter])
+		self._dataset.add_parameters(axis_parameter+comb_parameter)
 
 
 
@@ -316,10 +316,11 @@ class Sweeper(object):
 			self._do_measurement()
 
 	def autosweep(self,stepsize=0.1,output=False):
-		while self.mode == 'sweep':
-			self.step(stepsize)
+		while self._mode == 'sweep':
 			if output:
-				print("Step completed at axes position {axes} and state {state}".format(axes=self._axes_loc,state=list(self._last_state)))
+				print("Performing step at axes position {axes} and state {state}".format(axes=self._axes_loc,state=list(self._targ_state)))
+			self.step(stepsize)
+			
 
 	def _terminate_sweep(self):
 		if self._mode != 'sweep':raise ValueError("This function is only usable in sweep mode")
@@ -327,3 +328,25 @@ class Sweeper(object):
 		print("Sweep completed.")
 		if not (self._ds_ready):
 			print("Warning: although the sweep has been completed, the dataset has not been created yet (and so the data has not been recorded.) To create the dataset, use Sweeper.initalize_dataset(name,location) and the data will be written automatically.")
+
+# example usage
+if __name__ == '__main__':
+
+	s = Sweeper()
+	s.add_axis(0,1,11)
+	s.add_swept_setting(    'dev',setting=['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','set_voltage'],inputs=[0],var_slot=1)
+	s.add_swept_setting(    'dev',setting=['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','set_voltage'],inputs=[1],var_slot=1)
+	s.add_recorded_setting( 'dev',setting=['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','get_voltage'],inputs=[0])
+	s.add_recorded_setting( 'dev',setting=['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','get_voltage'],inputs=[1])
+	s.generate_mesh([[0,1],[0,2]])
+	
+	s.autosweep(output=True)
+
+	# s.initalize_dataset('ds_test','\\data\\test\\')
+	# ^
+	# |
+	# this would create the appropriate data set. It's commented out to prevent unnecessary files.
+	# the dataset initializeation can be called ay any point before during or after the sweep.
+	# Before it is called, all data (and comments, and parameters) are stored but not written
+	# When it is called, all stored data (and comments, and parametrs) will be written
+	# Once is has been called, all data and comments and parameteres are written as they are acquired.

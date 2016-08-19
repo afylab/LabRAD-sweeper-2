@@ -20,7 +20,7 @@ class Setting(object):
 		if not self.ready:raise ValueError("Not ready to do get/set. Please ensure that the connection and setting have both been added.")
 		return self.setting.set(value)
 
-	def label(self):
+	def getlabel(self):
 		return self.label
 
 	def set_max_ramp_speed(self,max_ramp_speed):
