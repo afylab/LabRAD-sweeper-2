@@ -71,7 +71,7 @@ class SweepMesh(object):
 		if self.first_pos:
 			# We want the first next() call to return the values at (0,0,0,...) so we don't advance on the first call.
 			self.first_pos = False
-			return [tuple(self.axis_positions),tuple(self.m[tuple(self.axis_positions)])]
+			return [list(self.axis_positions),numpy.array(tuple(self.m[tuple(self.axis_positions)]))]
 
 		axis = 0
 		done = False
@@ -88,7 +88,7 @@ class SweepMesh(object):
 				if self.axis_positions == self.end_positions:
 					self.complete = True
 
-		return [tuple(self.axis_positions),tuple(self.m[tuple(self.axis_positions)])]
+		return [list(self.axis_positions),numpy.array(tuple(self.m[tuple(self.axis_positions)]))]
 
 # examples
 if __name__ == '__main__':

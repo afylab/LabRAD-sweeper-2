@@ -1,7 +1,7 @@
 from components.sweep_mesh import SweepMesh, Axis
 from components.settings   import Setting
 from components.logger     import DataSet
-import labrad
+import labrad, time
 
 class Sweeper(object):
 	def __init__(self):
@@ -37,7 +37,7 @@ class Sweeper(object):
 		if self._mode != 'setup':raise ValueError("This function is only available in setup mode")
 		self._axes.append(Axis(start,end,points))
 
-	def add_swept_setting(self, kind, label=None, ID=None, name=None, setting=None, inputs=None, var_slot=None):
+	def add_swept_setting(self, kind, label=None, max_ramp_speed=None, ID=None, name=None, setting=None, inputs=None, var_slot=None):
 		"""
 		Adds a setting to be swept.
 		kind is either 'vds' for a Virtual Device Server setting,
@@ -55,6 +55,11 @@ class Sweeper(object):
 		If it is not specified, it takes the default value of the setting name for 'dev' settings, or the
 		label specified in the registry for 'vds' settings. For 'vds' settings, if no label is specified
 		in the registry, the label MUST be specified here.
+
+		'max_ramp_speed' is the maximum speed (in input value / second) at which the setting will be changed.
+		This will limit the speed at which the sweep will take place. If it is set to None, there will be no
+		limit enforced for this setting; if all swept settings have None for max_ramp_speed, there will be no
+		limit enforced at all.
 		"""
 		if self._mode != 'setup':raise ValueError("This function is only available in setup mode")
 
@@ -62,7 +67,7 @@ class Sweeper(object):
 			if not ((setting is None) and (inputs is None) and (var_slot is None)):
 				print("Warning: specified at least one of setting,inptus,var_slot for a 'vds' type setting. These are properties for a 'dev' type setting, and will be ignored.")
 			
-			s = Setting(self._cxn)
+			s = Setting(self._cxn,max_ramp_speed=max_ramp_speed)
 			s.vds(ID,name)      # Since a connection has been passed, this will error if ID/name don't point to a valid channel.
 			                    # So, no need to check for that here.
 			
@@ -72,18 +77,18 @@ class Sweeper(object):
 
 		elif kind == 'dev':
 			if (setting is None) or (inputs is None) or (var_slot is None):
-				raise ValueError("For a 'dev' type setting: setting, inpts, and var_slot must be specified.")
+				raise ValueError("For a 'dev' type setting: setting, inputs, and var_slot must be specified.")
 			if not ((name is None) and (ID is None)):
 				print("Warning: specified name and/or ID for a 'dev' type setting. These are properties for the 'vds' type setting, and will be ignored.")
 			
-			s = Setting(self._cxn,label=label)
-			s.dev_set(setting,inpts,var_slot)
+			s = Setting(self._cxn,max_ramp_speed=max_ramp_speed,label=label)
+			s.dev_set(setting,inputs,var_slot)
 			self._swp.append(s)
 
 		else:
 			raise ValueError("'kind' must be 'vds' (for a Virtual Device Server setting) or 'dev' (for a LabRAD Device Server setting). Got {kind} instead.".format(kind=kind))
 
-	def add_recorded_setting(self, kind, label=None, ID=None, name=None, setting=None, inpts=None):
+	def add_recorded_setting(self, kind, label=None, ID=None, name=None, setting=None, inputs=None):
 		"""
 		Adds a setting to be recorded.
 		kind is either 'vds' for a Virtual Device Server setting,
@@ -184,12 +189,141 @@ class Sweeper(object):
 			axis_pos_indep+settings_indep, # independent variables. For now we don't include the axis_val_indeps
 			dependents,                    # dependent   variables.
 			)
+		self._dataset.add_comments(comments)
+		self._dataset.add_parameters([axis_parameter,comb_parameter])
+
+
 
 		# internal sweep properties
-		# ...
+		self._ds_ready   = False # whether or not the dataset has been initialized (and is ready to be written to)
+		self._speedlimit = any([setting.max_ramp_speed is not None for setting in self._swp]) # whether or not any setting has a speed limitation
+		
+		self._axes_loc, self._targ_state = self._mesh.next()
+		# _axes_loc   : set of integer positions along each axis
+		# _targ_state : the state (list of swept setting values) that the next measurement will be taken.
+
+		self._last_state = None              # the state (list of swept setting values) that the last measurement was taken at. For the first measurement it's None.
+		self._progress   = 0.0 # progress (0 -> 1) from last state to target state
+		self._duration   = 0.0 # duration of current step in seconds. Zero for first state.
 
 	def initalize_dataset(self,dataset_name,dataset_location):
-		if self._mode != 'sweep':raise ValueError("This function is only usable in sweep mode")
+		"""Ininitializes the dataset & makes it ready to take data/comments/parameters. Name and location must both be specified at this time."""
+		if self._mode == 'setup': raise ValueError("This function is only usable after the sweep has been started. It *can* still be used after the sweep is complete.")
+		if self._ds_ready       : raise ValueError("Dataset has already been initialized")
 		self._dataset.set_name(dataset_name)
 		self._dataset.set_location(dataset_location)
 		self._dataset.create_dataset()
+
+		self._ds_ready = True
+		self._dataset.write_data()
+		self._dataset.write_parameters()
+		self._dataset.write_comments()
+
+	def add_comments(self,comments):
+		if self._mode != 'sweep':raise ValueError("This function is only usable in sweep mode")
+		self._dataset.add_comments(comments,self._ds_ready)
+	def add_parameters(self,parameters):
+		if self._mode != 'sweep':raise ValueError("This function is only usable in sweep mode")
+		self._dataset.add_parameters(parameters,self._ds_ready)
+
+
+	def _set_state(self,state):
+		"""Sets the state of each swept setting. This should not be called except by the Sweeper class itself."""
+		if self._mode != 'sweep':raise ValueError("This function is only usable in sweep mode")
+
+		if len(state) != len(self._swp):
+			raise ValueError("Length of state must equal number of swept settings")
+		for n in range(len(self._swp)):
+			self._swp[n].set(state[n])
+
+	def _do_measurement(self):
+		"""Takes a measurement and advances the mesh. This should not be called except by the Sweeper class itself."""
+		if self._mode != 'sweep':raise ValueError("This function is only usable in sweep mode")
+
+		self._set_state(self._targ_state)
+		measurements = [setting.get() for setting in self._rec]
+		self._dataset.add_data([ self._axes_loc + list(self._targ_state) + measurements ])
+
+		self._last_state = self._targ_state.copy()
+		if not self._mesh.complete:
+			self._axes_loc, self._targ_state = self._mesh.next()
+		else:
+			self._terminate_sweep()
+			return
+
+		# reset _progress, calculate new duration
+		if self._speedlimit:
+			self._progress = 0.0
+			self._duration = 0.0
+			for n in range(len(self._swp)):
+				if self._swp[n].max_ramp_speed is not None:
+					self._duration = max([self._duration, abs(self._targ_state[n]-self._last_state[n])/self._swp[n].max_ramp_speed])
+
+	def advance(self,time_elapsed):
+		if self._mode != 'sweep': raise ValueError("This function is only usable in sweep mode")
+		if not self._speedlimit : raise ValueError("Cannot advance by time elapsed without speed limit (no swept setting has a speed limit enforced.) To advance the sweep, please use Sweeper.step()")
+		if time_elapsed <= 0    : raise ValueError("time_elapsed must be greater than zero")
+
+		if not (self._duration > 0):
+			# this represents one coincidentally instant step inside a sweep with a speed limit in general
+			self._do_measurement()
+
+		else:
+			self._progress += time_elapsed / self._duration
+
+			# if we've reached (or overtaken) the next step
+			if self._progress >= 1.0:
+				self._do_measurement() # sets state to target, performs measurement, advances mesh, sets appropriate duration / etc
+
+			else:
+				self._set_state(self._targ_state*self._progress + self._last_state*(1-self._progress))
+
+
+	def step(self,stepsize=0.1):
+		"""
+		Performs one step in the sweep.
+
+		If there is no speed limit, this simply performs the next measurement.
+		Once the target state has been reached, a measurement will be taken, recorded, and the next target will be set.
+
+		If there is a speed limit, this ramps at the appropriate speed until it gets to the target state.
+		Delay between steps will be equal to stepsize (0.1 seconds by default), enforced with time.sleep()
+		In general this is only the right way to perform the sweep if it is being performed in the Python Shell.
+		If this is the case then the best way would be to call Sweeper.autosweep(), which will call step() until
+		the end of the mesh is reached.
+
+		Timing the sweep with time.sleep() is not always reliable, and so the best way to use the Sweeper is to
+		have it managed by a program that keeps its own internal time (such as a PyQt application,) and using the
+		advance(time_elapsed) method with accurate timing.
+		"""
+		if self._mode != 'sweep':raise ValueError("This function is only usable in sweep mode")
+
+		if self._speedlimit:
+			
+			while self._progress < 1:
+
+				timeleft = (1-self._progress) * self._duration
+				
+				if timeleft > stepsize:
+					time.sleep(stepsize)
+					self.advance(stepsize)
+
+				else:
+					self._do_measurement
+					break
+		else:
+			# no speed limit
+			self._do_measurement()
+
+	def autosweep(self,stepsize=0.1,output=False):
+		while self.mode == 'sweep':
+			self.step(stepsize)
+			if output:
+				print("Step completed at axes position {axes} and state {state}".format(axes=self._axes_loc,state=list(self._last_state)))
+
+	def _terminate_sweep(self):
+		if self._mode != 'sweep':raise ValueError("This function is only usable in sweep mode")
+		self._mode = 'done'
+		print("Sweep completed.")
+		if not (self._ds_ready):
+			print("Warning: although the sweep has been completed, the dataset has not been created yet (and so the data has not been recorded.) To create the dataset, use Sweeper.initalize_dataset(name,location) and the data will be written automatically.")
