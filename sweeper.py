@@ -6,8 +6,8 @@ import labrad, time
 class Sweeper(object):
 	def __init__(self):
 		self._cxn  = labrad.connect()
-		self._mesh = SweepMesh() # start not generated. Can be generated once all axes / settings are defines.
-		self._axes = []          # list of axes (just stored as their lengths.) <self.mesh.mesh.shape> will be <self.axes + [len(self.swp)]>
+		self._mesh = SweepMesh() # starts not generated. Can be generated once all axes / settings are defined.
+		self._axes = []          # list of axes (just stored as their lengths.)
 		self._swp  = []          # list of settings (SettingObject instances) to be set each step
 		self._rec  = []          # list of settings (SettingObject instances) to be recorded each step
 
@@ -24,7 +24,7 @@ class Sweeper(object):
 		                         #         In this mode, the Sweeper object is inert; it cannot do anything.
 		                         #         Its properties can still be accessed / read, however.
 
-	# Read-only access functions
+	# Read-only access functions. Note that while it is possible to modify the objects returned, it is discouraged.
 	def axes(self):
 		return tuple(self._axes)
 	def swp(self):
@@ -65,7 +65,7 @@ class Sweeper(object):
 
 		if kind == 'vds':
 			if not ((setting is None) and (inputs is None) and (var_slot is None)):
-				print("Warning: specified at least one of setting,inptus,var_slot for a 'vds' type setting. These are properties for a 'dev' type setting, and will be ignored.")
+				print("Warning: specified at least one of setting,inputs,var_slot for a 'vds' type setting. These are properties for a 'dev' type setting, and will be ignored.")
 			
 			s = Setting(self._cxn,max_ramp_speed=max_ramp_speed)
 			s.vds(ID,name)      # Since a connection has been passed, this will error if ID/name don't point to a valid channel.
@@ -202,13 +202,13 @@ class Sweeper(object):
 		# _axes_loc   : set of integer positions along each axis
 		# _targ_state : the state (list of swept setting values) that the next measurement will be taken.
 
-		self._last_state = None              # the state (list of swept setting values) that the last measurement was taken at. For the first measurement it's None.
-		self._progress   = 0.0 # progress (0 -> 1) from last state to target state
-		self._duration   = 0.0 # duration of current step in seconds. Zero for first state.
+		self._last_state = None # the state (list of swept setting values) that the last measurement was taken at. For the first measurement it's None.
+		self._progress   = 0.0  # progress (0 -> 1) from last state to target state
+		self._duration   = 0.0  # duration of current step in seconds. Zero for first state.
 
 	def initalize_dataset(self,dataset_name,dataset_location):
 		"""Ininitializes the dataset & makes it ready to take data/comments/parameters. Name and location must both be specified at this time."""
-		if self._mode == 'setup': raise ValueError("This function is only usable after the sweep has been started. It *can* still be used after the sweep is complete.")
+		if self._mode == 'setup': raise ValueError("This function is only usable after the sweep has been started. It can still be used after the sweep is complete.")
 		if self._ds_ready       : raise ValueError("Dataset has already been initialized")
 		self._dataset.set_name(dataset_name)
 		self._dataset.set_location(dataset_location)
@@ -242,7 +242,7 @@ class Sweeper(object):
 
 		self._set_state(self._targ_state)
 		measurements = [setting.get() for setting in self._rec]
-		self._dataset.add_data([ self._axes_loc + list(self._targ_state) + measurements ])
+		self._dataset.add_data([ self._axes_loc + list(self._targ_state) + measurements ],self._ds_ready)
 
 		self._last_state = self._targ_state.copy()
 		if not self._mesh.complete:
@@ -251,7 +251,7 @@ class Sweeper(object):
 			self._terminate_sweep()
 			return
 
-		# reset _progress, calculate new duration
+		# reset _progress, calculate new _duration
 		if self._speedlimit:
 			self._progress = 0.0
 			self._duration = 0.0
@@ -265,7 +265,7 @@ class Sweeper(object):
 		if time_elapsed <= 0    : raise ValueError("time_elapsed must be greater than zero")
 
 		if not (self._duration > 0):
-			# this represents one coincidentally instant step inside a sweep with a speed limit in general
+			# this represents one incidentally instant step inside a sweep with a speed limit in general
 			self._do_measurement()
 
 		else:

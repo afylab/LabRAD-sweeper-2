@@ -26,9 +26,9 @@ class Setting(object):
 		return self.label
 
 	def set_max_ramp_speed(self,max_ramp_speed):
-		self.max_ramp_speed = max_ramp_speed
 		if max_ramp_speed is not None:
 			if max_ramp_speed <= 0:raise ValueError("max_ramp_speed cannot be zero (or less than zero)")
+		self.max_ramp_speed = max_ramp_speed
 
 	def connect(self,connection):
 		"""Supplies a LabRAD connection to the Setting. Not necessary if one was supplied on init."""
