@@ -233,6 +233,10 @@ class Sweeper(object):
 	def add_parameters(self,parameters):
 		if self._mode != 'sweep':raise ValueError("This function is only usable in sweep mode")
 		self._dataset.add_parameters(parameters,self._ds_ready)
+	def has_speedlimit(self):
+		return bool(self._speedlimit)
+	def done(self):
+		return bool(self._mode == 'done')
 
 
 	def _set_state(self,state):
@@ -317,6 +321,7 @@ class Sweeper(object):
 					self.advance(stepsize)
 
 				else:
+					time.sleep(timeleft)
 					self._do_measurement
 					break
 		else:
@@ -347,7 +352,7 @@ if __name__ == '__main__':
 	s.add_recorded_setting( 'dev', label="GET QUAD 0", setting=['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','get_voltage'],inputs=[0])
 	s.add_recorded_setting( 'dev', label="GET QUAD 1", setting=['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','get_voltage'],inputs=[1])
 	s.generate_mesh([[0,1],[0,2]])
-	
+
 	s.autosweep(output=True)
 
 	# s.initalize_dataset('ds_test_3','\\data\\test\\')
