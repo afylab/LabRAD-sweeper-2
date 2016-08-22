@@ -182,8 +182,8 @@ class Sweeper(object):
 
 		axis_pos_indep = [ ['axis_{n}_pos'.format(n=n),'i'] for n in range(len(self._axes)) ] # independent variables representing the positions for each axis
 		axis_val_indep = [ ['axis_{n}_val'.format(n=n),'v'] for n in range(len(self._axes)) ] # independent variables representing the values    for each axis
-		settings_indep = [ [setting.getlabel()           ,'v'] for setting in self._swp        ] # independent variables representing the values    for each swept    setting
-		dependents     = [ [setting.getlabel()           ,'v'] for setting in self._rec        ] # dependent   variables representing the values    for each recorded setting
+		settings_indep = [ [setting.getlabel()                   ,'v'] for setting in self._swp        ] # independent variables representing the values    for each swept    setting
+		dependents     = [ [setting.getlabel(),setting.getlabel(),'v'] for setting in self._rec        ] # dependent   variables representing the values    for each recorded setting
 
 		self._dataset = DataSet(           # we don't include the name & location yet so that the user can choose when to specify them.
 			axis_pos_indep+settings_indep, # independent variables. For now we don't include the axis_val_indeps
@@ -210,8 +210,16 @@ class Sweeper(object):
 		"""Ininitializes the dataset & makes it ready to take data/comments/parameters. Name and location must both be specified at this time."""
 		if self._mode == 'setup': raise ValueError("This function is only usable after the sweep has been started. It can still be used after the sweep is complete.")
 		if self._ds_ready       : raise ValueError("Dataset has already been initialized")
+
+		# process location
+		while dataset_location.startswith('\\'):
+			dataset_location=dataset_location[1:]
+		while dataset_location.endswith('\\'):
+			dataset_location=dataset_location[:-1]
+		location = ['']+dataset_location.replace('\\','\n').splitlines()
+
 		self._dataset.set_name(dataset_name)
-		self._dataset.set_location(dataset_location)
+		self._dataset.set_location(location)
 		self._dataset.create_dataset()
 
 		self._ds_ready = True
@@ -334,15 +342,15 @@ if __name__ == '__main__':
 
 	s = Sweeper()
 	s.add_axis(0,1,11)
-	s.add_swept_setting(    'dev',setting=['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','set_voltage'],inputs=[0],var_slot=1)
-	s.add_swept_setting(    'dev',setting=['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','set_voltage'],inputs=[1],var_slot=1)
-	s.add_recorded_setting( 'dev',setting=['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','get_voltage'],inputs=[0])
-	s.add_recorded_setting( 'dev',setting=['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','get_voltage'],inputs=[1])
+	s.add_swept_setting(    'dev', label="SET QUAD 0", setting=['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','set_voltage'],inputs=[0],var_slot=1)
+	s.add_swept_setting(    'dev', label="SET QUAD 1", setting=['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','set_voltage'],inputs=[1],var_slot=1)
+	s.add_recorded_setting( 'dev', label="GET QUAD 0", setting=['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','get_voltage'],inputs=[0])
+	s.add_recorded_setting( 'dev', label="GET QUAD 1", setting=['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','get_voltage'],inputs=[1])
 	s.generate_mesh([[0,1],[0,2]])
 	
 	s.autosweep(output=True)
 
-	# s.initalize_dataset('ds_test','\\data\\test\\')
+	# s.initalize_dataset('ds_test_3','\\data\\test\\')
 	# ^
 	# |
 	# this would create the appropriate data set. It's commented out to prevent unnecessary files.
