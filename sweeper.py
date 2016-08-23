@@ -143,8 +143,10 @@ class Sweeper(object):
 		if self._mode != 'setup':raise ValueError("This function is only available in setup mode")
 		self._rec=[]
 
-	def generate_mesh(self,lincombs):
+	def initialize_sweep(self,lincombs,delay,stepsize):
 		"""
+		Initializes the sweep (and configures delay and step size)
+
 		Generates the mesh from linear combinations of the axes.
 		One linear combination is required for each swept setting,
 		in the order in which the swept settings were added.
@@ -165,10 +167,10 @@ class Sweeper(object):
 		self._mesh.generate(self._axes,lincombs)
 		self._lincombs = lincombs
 		self._mode = 'sweep'
-		self._configure_sweep()
+		self._configure_sweep(delay,stepsize)
 
 	# sweep mode functions
-	def _configure_sweep(self):
+	def _configure_sweep(self,delay,stepsize):
 		"""This function is called automatically when the mesh is generated. It configures the properties & objects necessary to begin sweeping."""
 		if self._mode != 'sweep':raise ValueError("This function is only usable in sweep mode")
 
@@ -203,8 +205,16 @@ class Sweeper(object):
 		# _targ_state : the state (list of swept setting values) that the next measurement will be taken.
 
 		self._last_state = None # the state (list of swept setting values) that the last measurement was taken at. For the first measurement it's None.
-		self._progress   = 0.0  # progress (0 -> 1) from last state to target state
-		self._duration   = 0.0  # duration of current step in seconds. Zero for first state.
+		
+		self._set_state(self._targ_state) # start off at the first state
+		self._time          = 0.0         # at the beginning of the delay period
+		self._transfer_mode = 'delay'     # 
+
+		self._delay    = delay
+		self._stepsize = stepsize
+
+		self._rung  = 0 # these start out empty
+		self._rungs = 0 # and will be set upon the first ramp start
 
 	def initalize_dataset(self,dataset_name,dataset_location):
 		"""Ininitializes the dataset & makes it ready to take data/comments/parameters. Name and location must both be specified at this time."""
@@ -255,7 +265,6 @@ class Sweeper(object):
 		"""Takes a measurement and advances the mesh. This should not be called except by the Sweeper class itself."""
 		if self._mode != 'sweep':raise ValueError("This function is only usable in sweep mode")
 
-		self._set_state(self._targ_state)
 		if output:print("measurement at {_targ_state}".format(_targ_state=self._targ_state))
 		measurements = [setting.get() for setting in self._rec]
 		self._dataset.add_data([ self._axes_loc + list(self._targ_state) + measurements ],self._ds_ready)
@@ -263,81 +272,67 @@ class Sweeper(object):
 		self._last_state = self._targ_state.copy()
 		if not self._mesh.complete:
 			self._axes_loc, self._targ_state = self._mesh.next()
+
+			self._time = 0.0
+
+			duration = 0.0
+			for n in range(len(self._swp)):
+				if self._swp[n].max_ramp_speed is not None:
+					duration = max([duration, abs(self._targ_state[n]-self._last_state[n])/self._swp[n].max_ramp_speed])
+			duration = round(duration,6)
+
+			self._rung  = 1
+			self._rungs = int(duration / self._stepsize)
+			if self._rungs == 0:                  # If the duration is less than 1 step,
+				self._set_state(self._targ_state) # Immediately move to the target state
+				self._transfer_mode = 'delay'     # and enter delay mode
+
+			else:                                                              # If there's at least one rung
+				p = self._rung / (1.0 + self._rungs)                           # 
+				self._set_state(self._last_state*(1-p) + self._targ_state*(p)) # set state to the first rung
+				self._transfer_mode = 'ramp'                                   # and enter ramp mode
+
 		else:
 			self._terminate_sweep()
 			return
 
-		# reset _progress, calculate new _duration
-		if self._speedlimit:
-			self._progress = 0.0
-			self._duration = 0.0
-			for n in range(len(self._swp)):
-				if self._swp[n].max_ramp_speed is not None:
-					self._duration = max([self._duration, abs(self._targ_state[n]-self._last_state[n])/self._swp[n].max_ramp_speed])
-
 	def advance(self,time_elapsed,output=False):
 		if self._mode != 'sweep': raise ValueError("This function is only usable in sweep mode")
-		if not self._speedlimit : raise ValueError("Cannot advance by time elapsed without speed limit (no swept setting has a speed limit enforced.) To advance the sweep, please use Sweeper.step()")
+		#if not self._speedlimit : raise ValueError("Cannot advance by time elapsed without speed limit (no swept setting has a speed limit enforced.) To advance the sweep, please use Sweeper.step()")
 		if time_elapsed <= 0    : raise ValueError("time_elapsed must be greater than zero")
 
-		if not (self._duration > 0):
-			# this represents one incidentally instant step inside a sweep with a speed limit in general
-			self._do_measurement(output)
+		if self._transfer_mode == 'delay':
+			self._time += time_elapsed
 
-		else:
-			self._progress += time_elapsed / self._duration
+			if self._time >= self._delay:
+				if output:print("Delay period end reached; taking a measurement")
+				self._do_measurement(output) # take and log data, set up new transfer
+		
+		elif self._transfer_mode == 'ramp':
+			self._time += min([time_elapsed,self._stepsize])
+			if self._time >= self._stepsize:
 
-			# if we've reached (or overtaken) the next step
-			if self._progress >= 1.0:
-				self._do_measurement(output) # sets state to target, performs measurement, advances mesh, sets appropriate duration / etc
-
-			else:
-				self._set_state(self._targ_state*self._progress + self._last_state*(1-self._progress))
-
-
-	def step(self,stepsize=0.1):
-		"""
-		Performs one step in the sweep.
-
-		If there is no speed limit, this simply performs the next measurement.
-		Once the target state has been reached, a measurement will be taken, recorded, and the next target will be set.
-
-		If there is a speed limit, this ramps at the appropriate speed until it gets to the target state.
-		Delay between steps will be equal to stepsize (0.1 seconds by default), enforced with time.sleep()
-		In general this is only the right way to perform the sweep if it is being performed in the Python Shell.
-		If this is the case then the best way would be to call Sweeper.autosweep(), which will call step() until
-		the end of the mesh is reached.
-
-		Timing the sweep with time.sleep() is not always reliable, and so the best way to use the Sweeper is to
-		have it managed by a program that keeps its own internal time (such as a PyQt application,) and using the
-		advance(time_elapsed) method with accurate timing.
-		"""
-		if self._mode != 'sweep':raise ValueError("This function is only usable in sweep mode")
-
-		if self._speedlimit:
-			
-			while self._progress < 1:
-
-				timeleft = (1-self._progress) * self._duration
-				
-				if timeleft > stepsize:
-					time.sleep(stepsize)
-					self.advance(stepsize)
+				if self._rung == self._rungs: # last rung
+					if output:print("Last rung reached. Entering delay mode.")
+					self._set_state(self._targ_state)
+					self._time = 0
+					self._transfer_mode = 'delay'
 
 				else:
-					time.sleep(timeleft)
-					self._do_measurement
-					break
-		else:
-			# no speed limit
-			self._do_measurement()
+					if output:print("Rung advanced to position {_rung} out of {_rungs}".format(_rung = self._rung, _rungs = self._rungs))
+					self._time -= self._stepsize
+					self._rung += 1
+					p = self._rung / (1.0+self._rungs)
+					self._set_state(self._last_state*(1-p)+self._targ_state*(p))
 
-	def autosweep(self,stepsize=0.1,output=False):
+	def autosweep(self,output=False):
 		while self._mode == 'sweep':
-			if output:
-				print("Performing step at axes position {axes} and state {state}".format(axes=self._axes_loc,state=list(self._targ_state)))
-			self.step(stepsize)
-			
+			if self._transfer_mode == 'ramp':
+				time.sleep(self._stepsize)
+				self.advance(self._stepsize,output)
+			else:
+				time.sleep(self._delay)
+				self.advance(self._delay,output)
 
 	def _terminate_sweep(self):
 		if self._mode != 'sweep':raise ValueError("This function is only usable in sweep mode")
@@ -358,12 +353,13 @@ class Sweeper(object):
 if __name__ == '__main__':
 
 	s = Sweeper()
-	s.add_axis(0,1,11)
-	s.add_swept_setting(    'dev', label="SET QUAD 0", setting=['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','set_voltage'],inputs=[0],var_slot=1)
+	s.add_axis(0,1,5)
+	s.add_axis(0,1,5)
+	s.add_swept_setting(    'dev', label="SET QUAD 0", setting=['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','set_voltage'],inputs=[0],var_slot=1,max_ramp_speed=3.0)
 	s.add_swept_setting(    'dev', label="SET QUAD 1", setting=['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','set_voltage'],inputs=[1],var_slot=1)
 	s.add_recorded_setting( 'dev', label="GET QUAD 0", setting=['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','get_voltage'],inputs=[0])
 	s.add_recorded_setting( 'dev', label="GET QUAD 1", setting=['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','get_voltage'],inputs=[1])
-	s.generate_mesh([[0,1],[0,2]])
+	s.initialize_sweep([[0,1,0],[0,2,1]],0.5,0.025)
 
 	s.autosweep(output=True)
 
