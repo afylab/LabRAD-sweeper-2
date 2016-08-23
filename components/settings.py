@@ -44,7 +44,7 @@ class Setting(object):
 				# label detection for 'vds' kind
 				if self.kind == 'vds':
 					self.label=self.setting.details[2] if self.setting.details[2] else None
-					if label == None:raise ValueError("Label has not been specified by user or by VDS")
+					if self.label == None:raise ValueError("Label has not been specified by user or by VDS")
 
 				# label detection for 'dev' kind
 				if self.kind == 'dev':
@@ -65,7 +65,7 @@ class Setting(object):
 
 			if self.label is None:
 				self.label=self.setting.details[2] if self.setting.details[2] else None
-				if label == None:raise ValueError("Label has not been specified by user or by VDS")
+				if self.label == None:raise ValueError("Label has not been specified by user or by VDS")
 
 			self.ready = True
 
