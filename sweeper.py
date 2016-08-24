@@ -194,6 +194,40 @@ class Sweeper(object):
 		self._dataset.add_comments(comments)
 		self._dataset.add_parameters(axis_parameter+comb_parameter)
 
+		# auto-dump server parameters
+		ctx = self._cxn.context()
+
+		servers = []; devices = []
+		for setting in self._swp:
+			if setting.kind == 'vds':
+				server=setting.setting.details[10][0]
+				device=setting.setting.details[10][1]
+			if setting.kind == 'dev':
+				server=setting.setting.setting[0]
+				device=setting.setting.setting[1]
+			if server not in servers:servers.append(server)
+			if device not in devices:devices.append(device)
+		for setting in self._rec:
+			if setting.kind == 'vds':
+				server=setting.setting.details[7][0]
+				device=setting.setting.details[7][1]
+			if setting.kind == 'dev':
+				server=setting.setting.setting[0]
+				device=setting.setting.setting[1]
+			if server not in servers:servers.append(server)
+			if device not in devices:devices.append(device)
+
+		for server in servers:
+			if server in self._cxn.servers:
+				if "parameters" in self._cxn.servers[server].settings:
+					if "list_devices" in self._cxn.servers[server].setting:
+
+						for device in self._cxn.servers[server].list_devices(context=ctx):
+							self._cxn.servers[server].select_device(device,context=ctx)
+
+							# param = [ [name, units, value], [name, units, value], ... ] = *(ss?)
+							param = self._cxn.servers[server].parameters(context=ctx)
+							self._dataset.add_parameters([  ["parameters ({server})".format(server=server),"*(ss?)",param]  ])
 
 
 		# internal sweep properties
