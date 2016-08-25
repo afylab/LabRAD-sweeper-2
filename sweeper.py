@@ -223,11 +223,13 @@ class Sweeper(object):
 					if "list_devices" in self._cxn.servers[server].setting:
 
 						for device in self._cxn.servers[server].list_devices(context=ctx):
-							self._cxn.servers[server].select_device(device,context=ctx)
+							if device in devices:
 
-							# param = [ [name, units, value], [name, units, value], ... ] = *(ss?)
-							param = self._cxn.servers[server].parameters(context=ctx)
-							self._dataset.add_parameters([  ["parameters ({server})".format(server=server),"*(ss?)",param]  ])
+								self._cxn.servers[server].select_device(device,context=ctx)
+
+								# param = [ [name, units, value], [name, units, value], ... ] = *(ss?)
+								param = self._cxn.servers[server].parameters(context=ctx)
+								self._dataset.add_parameters([  ["parameters ({device})".format(device=device),"*(ss?)",param]  ])
 
 
 		# internal sweep properties
