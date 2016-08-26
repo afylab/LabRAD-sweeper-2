@@ -27,11 +27,12 @@ class interface(gui.QWidget):
 		self.show()
 
 		self.s = Sweeper()
-		self.s.add_axis(0,1,11)
-		self.s.add_axis(0,1,11)
-		self.s.add_swept_setting('vds',ID='4000',max_ramp_speed=0.5)
+		self.s.add_axis(0,1,7)
+		self.s.add_axis(0,1,7)
+		self.s.add_swept_setting('vds',ID='4000',max_ramp_speed=3.0)
+		self.s.add_swept_setting('vds',ID='4001',max_ramp_speed=3.0)
 		self.s.add_recorded_setting('vds',ID='4000')
-		self.s.initialize_sweep([[0,1,2]], 0.5, 0.025)
+		self.s.initialize_sweep([[0,1,-1],[0,0,1]], 0.5, 0.025)
 		self.going = False
 
 		self.timer = core.QTimer(self)

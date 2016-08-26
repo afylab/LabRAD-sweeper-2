@@ -6,6 +6,7 @@ import labrad, time
 class Sweeper(object):
 	def __init__(self):
 		self._cxn  = labrad.connect()
+		self._ctx  = self._cxn.context() 
 		self._mesh = SweepMesh() # starts not generated. Can be generated once all axes / settings are defined.
 		self._axes = []          # list of axes (just stored as their lengths.)
 		self._swp  = []          # list of settings (SettingObject instances) to be set each step
@@ -24,6 +25,10 @@ class Sweeper(object):
 		                         #         In this mode, the Sweeper object is inert; it cannot do anything.
 		                         #         Its properties can still be accessed / read, however.
 
+		self._comments           = []
+		self._parameters         = []
+		self._setting_parameters = []
+
 	# Read-only access functions. Note that while it is possible to modify the objects returned, it is discouraged.
 	def axes(self):
 		return tuple(self._axes)
@@ -31,6 +36,21 @@ class Sweeper(object):
 		return tuple(self._swp)
 	def rec(self):
 		return tuple(self._rec)
+
+	# comments and parameters
+	def add_comments(self,comments):
+		if self._mode == 'setup':
+			self._comments += comments
+		else:
+			self._dataset.add_comments(comments,self._ds_ready)
+
+	def add_parameters(self,parameters=[],settings=[]):
+		if self._mode == 'setup':
+			self._parameters         += parameters
+			self._setting_parameters += settings
+		else:
+			self._dataset.add_parameters(parameters,self._ds_ready)
+			if len(settings):self._write_setting_parameters(settings)
 
 	# setup mode functions
 	def add_axis(self,start,end,points):
@@ -235,7 +255,12 @@ class Sweeper(object):
 		# internal sweep properties
 		self._ds_ready   = False # whether or not the dataset has been initialized (and is ready to be written to)
 		self._speedlimit = any([setting.max_ramp_speed is not None for setting in self._swp]) # whether or not any setting has a speed limitation
-		
+
+		# dump save comments, parameters
+		self._dataset.add_parameters(self._parameters)
+		self._dataset.add_comments(self._comments)
+		self._write_setting_parameters(self._setting_parameters)
+
 		self._axes_loc, self._targ_state = self._mesh.next()
 		# _axes_loc   : set of integer positions along each axis
 		# _targ_state : the state (list of swept setting values) that the next measurement will be taken.
@@ -276,12 +301,48 @@ class Sweeper(object):
 		if self._mode == 'done':
 			self._close()
 
-	def add_comments(self,comments):
-		if self._mode != 'sweep':raise ValueError("This function is only usable in sweep mode")
-		self._dataset.add_comments(comments,self._ds_ready)
-	def add_parameters(self,parameters):
-		if self._mode != 'sweep':raise ValueError("This function is only usable in sweep mode")
-		self._dataset.add_parameters(parameters,self._ds_ready)
+	def _write_setting_parameters(self,settings):
+		"""Settings is a list of the form [ [[server,device,setting],inputs], ... ]"""
+		parameters = []
+
+		for s in settings:
+
+			if type(s[0]) == str:
+				# VDS setting, s = [ID, name]
+				ans     = self._cxn.virtual_device_server.get_channel(*s[:-1])
+				setting = self._cxn.virtual_device_server.list_channel_details(*s[:-1])[7]
+
+			else:
+				# DEV setting, s = [[server,device,setting],inputs]
+
+				setting = s[0]
+				inputs  = s[1]
+
+				if not (setting[0] in self._cxn.servers):
+					print("Warning: found setting parameter with inactive server: {server}".format(server=setting[0]))
+					continue
+
+				if not (setting[1] in [k[1] for k in self._cxn.servers[setting[0]].list_devices(context=self._ctx)]):
+					print("Warning: found setting paramter with inactive device: {device}".format(device=setting[1]))
+					continue
+
+				if not (setting[2] in self._cxn.servers[setting[0]].settings):
+					print("Warning: found setting parameter with invalid setting. server={server}, setting={setting}".format(server=setting[0],setting=setting[2]))
+					continue
+
+				self._cxn.servers[setting[0]].select_device(setting[1])
+				ans = self._cxn.servers[setting[0]].settings[setting[2]](*inputs)
+
+			if len(s) >= 3:
+				name = s[2]
+			else:
+				name = "{server} ({device}) {setting}({inputs})".format(server=setting[0],device=setting[1],setting=setting[2],inputs=''.join([str(inp) for inp in inputs]))
+
+			parameters += [[name,'?',ans]]
+
+		self.add_parameters(parameters)
+
+
 	def has_speedlimit(self):
 		return bool(self._speedlimit)
 	def done(self):
@@ -391,11 +452,15 @@ if __name__ == '__main__':
 	s = Sweeper()
 	s.add_axis(0,1,5)
 	s.add_axis(0,1,5)
+	s.add_parameters(settings=[ [['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','get_voltage'],[0]], ['4001','','custom_name'] ])
 	s.add_swept_setting(    'dev', label="SET QUAD 0", setting=['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','set_voltage'],inputs=[0],var_slot=1,max_ramp_speed=3.0)
 	s.add_swept_setting(    'dev', label="SET QUAD 1", setting=['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','set_voltage'],inputs=[1],var_slot=1)
 	s.add_recorded_setting( 'dev', label="GET QUAD 0", setting=['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','get_voltage'],inputs=[0])
 	s.add_recorded_setting( 'dev', label="GET QUAD 1", setting=['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','get_voltage'],inputs=[1])
 	s.initialize_sweep([[0,1,0],[0,2,1]],0.5,0.025)
+
+	print(s._dataset.comments)
+	print(s._dataset.parameters)
 
 	s.autosweep(output=True)
 
@@ -405,5 +470,5 @@ if __name__ == '__main__':
 	# this would create the appropriate data set. It's commented out to prevent unnecessary files.
 	# the dataset initializeation can be called ay any point before during or after the sweep.
 	# Before it is called, all data (and comments, and parameters) are stored but not written
-	# When it is called, all stored data (and comments, and parametrs) will be written
+	# When it is called, all stored data (and comments, and parameters) will be written
 	# Once is has been called, all data and comments and parameteres are written as they are acquired.
