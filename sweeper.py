@@ -459,9 +459,6 @@ if __name__ == '__main__':
 	s.add_recorded_setting( 'dev', label="GET QUAD 1", setting=['dcbox_quad_ad5780','dcbox_quad_ad5780 (COM20)','get_voltage'],inputs=[1])
 	s.initialize_sweep([[0,1,0],[0,2,1]],0.5,0.025)
 
-	print(s._dataset.comments)
-	print(s._dataset.parameters)
-
 	s.autosweep(output=True)
 
 	# s.initalize_dataset('ds_test_3','\\data\\test\\')
