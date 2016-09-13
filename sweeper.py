@@ -302,7 +302,12 @@ class Sweeper(object):
 			self._close()
 
 	def _write_setting_parameters(self,settings):
-		"""Settings is a list of the form [ [[server,device,setting],inputs], ... ]"""
+		"""
+		Settings is a list of the form [ setting, setting, ... ]
+		Each setting is either of the form [[server,device,setting],inputs,parameter_name] for device server settings,
+		or of the form [ID,name,parameter_name] for VDS channel settings.
+		In both cases, the option 'parameter_name' is optional and will be constructed from the setting details if it is left off.
+		"""
 		parameters = []
 
 		for s in settings:
