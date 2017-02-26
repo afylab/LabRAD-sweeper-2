@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1060</width>
-    <height>900</height>
+    <width>954</width>
+    <height>764</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -23,7 +23,7 @@
       <height>151</height>
      </rect>
     </property>
-    <layout class="QVBoxLayout" name="verticalLayout_2">
+    <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,0,1,0">
      <property name="spacing">
       <number>0</number>
      </property>
@@ -40,6 +40,9 @@
          <property name="text">
           <string>Name</string>
          </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
         </widget>
        </item>
        <item>
@@ -49,6 +52,9 @@
          </property>
          <property name="text">
           <string>Start</string>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -60,6 +66,9 @@
          <property name="text">
           <string>Stop</string>
          </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
         </widget>
        </item>
        <item>
@@ -70,6 +79,9 @@
          <property name="text">
           <string>Points</string>
          </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
         </widget>
        </item>
        <item>
@@ -79,6 +91,9 @@
          </property>
          <property name="text">
           <string>Priority</string>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -112,7 +127,7 @@
        <property name="sizeHint" stdset="0">
         <size>
          <width>20</width>
-         <height>40</height>
+         <height>0</height>
         </size>
        </property>
       </spacer>
@@ -552,7 +567,7 @@
           </layout>
          </item>
          <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_16" stretch="0,0,0,0,0,0,0">
+          <layout class="QHBoxLayout" name="horizontalLayout_16" stretch="0,0,0,0,0,0,0,0">
            <property name="spacing">
             <number>0</number>
            </property>
@@ -563,6 +578,12 @@
              </property>
              <item>
               <widget class="QLineEdit" name="swp_lbl_coeff_const">
+               <property name="maximumSize">
+                <size>
+                 <width>98</width>
+                 <height>16777215</height>
+                </size>
+               </property>
                <property name="styleSheet">
                 <string notr="true">QLineEdit { background-color: rgb(224,224,224) }</string>
                </property>
@@ -575,7 +596,20 @@
               </widget>
              </item>
              <item>
-              <widget class="QLineEdit" name="swp_inp_coeff_const"/>
+              <widget class="QLineEdit" name="swp_inp_coeff_const">
+               <property name="minimumSize">
+                <size>
+                 <width>98</width>
+                 <height>20</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>98</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </widget>
              </item>
             </layout>
            </item>
@@ -589,6 +623,12 @@
                <property name="enabled">
                 <bool>true</bool>
                </property>
+               <property name="maximumSize">
+                <size>
+                 <width>98</width>
+                 <height>16777215</height>
+                </size>
+               </property>
                <property name="styleSheet">
                 <string notr="true">QLineEdit { background-color: rgb(224,224,224) }</string>
                </property>
@@ -601,7 +641,20 @@
               </widget>
              </item>
              <item>
-              <widget class="QLineEdit" name="swp_inp_coeff_0"/>
+              <widget class="QLineEdit" name="swp_inp_coeff_0">
+               <property name="minimumSize">
+                <size>
+                 <width>98</width>
+                 <height>20</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>98</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </widget>
              </item>
             </layout>
            </item>
@@ -612,6 +665,12 @@
              </property>
              <item>
               <widget class="QLineEdit" name="swp_lbl_coeff_1">
+               <property name="maximumSize">
+                <size>
+                 <width>98</width>
+                 <height>16777215</height>
+                </size>
+               </property>
                <property name="styleSheet">
                 <string notr="true">QLineEdit { background-color: rgb(224,224,224) }</string>
                </property>
@@ -624,7 +683,20 @@
               </widget>
              </item>
              <item>
-              <widget class="QLineEdit" name="swp_inp_coeff_1"/>
+              <widget class="QLineEdit" name="swp_inp_coeff_1">
+               <property name="minimumSize">
+                <size>
+                 <width>98</width>
+                 <height>20</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>98</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+              </widget>
              </item>
             </layout>
            </item>
@@ -635,6 +707,12 @@
              </property>
              <item>
               <widget class="QLineEdit" name="swp_lbl_coeff_2">
+               <property name="maximumSize">
+                <size>
+                 <width>99</width>
+                 <height>16777215</height>
+                </size>
+               </property>
                <property name="styleSheet">
                 <string notr="true">QLineEdit { background-color: rgb(224,224,224) }</string>
                </property>
@@ -647,7 +725,20 @@
               </widget>
              </item>
              <item>
-              <widget class="QLineEdit" name="swp_inp_coeff_2"/>
+              <widget class="QLineEdit" name="swp_inp_coeff_2">
+               <property name="minimumSize">
+                <size>
+                 <width>98</width>
+                 <height>20</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>98</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </widget>
              </item>
             </layout>
            </item>
@@ -658,6 +749,12 @@
              </property>
              <item>
               <widget class="QLineEdit" name="swp_lbl_coeff_3">
+               <property name="maximumSize">
+                <size>
+                 <width>98</width>
+                 <height>16777215</height>
+                </size>
+               </property>
                <property name="styleSheet">
                 <string notr="true">QLineEdit { background-color: rgb(224,224,224) }</string>
                </property>
@@ -670,7 +767,20 @@
               </widget>
              </item>
              <item>
-              <widget class="QLineEdit" name="swp_inp_coeff_3"/>
+              <widget class="QLineEdit" name="swp_inp_coeff_3">
+               <property name="minimumSize">
+                <size>
+                 <width>98</width>
+                 <height>20</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>98</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </widget>
              </item>
             </layout>
            </item>
@@ -681,6 +791,12 @@
              </property>
              <item>
               <widget class="QLineEdit" name="swp_lbl_coeff_4">
+               <property name="maximumSize">
+                <size>
+                 <width>98</width>
+                 <height>16777215</height>
+                </size>
+               </property>
                <property name="styleSheet">
                 <string notr="true">QLineEdit { background-color: rgb(224,224,224) }</string>
                </property>
@@ -694,6 +810,18 @@
              </item>
              <item>
               <widget class="QLineEdit" name="swp_inp_coeff_4">
+               <property name="minimumSize">
+                <size>
+                 <width>98</width>
+                 <height>20</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>98</width>
+                 <height>20</height>
+                </size>
+               </property>
                <property name="readOnly">
                 <bool>false</bool>
                </property>
@@ -708,6 +836,12 @@
              </property>
              <item>
               <widget class="QLineEdit" name="swp_lbl_coeff_5">
+               <property name="maximumSize">
+                <size>
+                 <width>98</width>
+                 <height>16777215</height>
+                </size>
+               </property>
                <property name="styleSheet">
                 <string notr="true">QLineEdit { background-color: rgb(224,224,224) }</string>
                </property>
@@ -720,9 +854,35 @@
               </widget>
              </item>
              <item>
-              <widget class="QLineEdit" name="swp_inp_coeff_5"/>
+              <widget class="QLineEdit" name="swp_inp_coeff_5">
+               <property name="minimumSize">
+                <size>
+                 <width>99</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>99</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </widget>
              </item>
             </layout>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer_6">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
            </item>
           </layout>
          </item>
@@ -1228,6 +1388,9 @@
          <property name="text">
           <string/>
          </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
          <property name="placeholderText">
           <string>Setup Status</string>
          </property>
@@ -1260,7 +1423,7 @@
       <x>0</x>
       <y>550</y>
       <width>571</width>
-      <height>191</height>
+      <height>193</height>
      </rect>
     </property>
     <layout class="QVBoxLayout" name="verticalLayout_34">
@@ -1275,6 +1438,9 @@
        <property name="text">
         <string>Comments</string>
        </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
       </widget>
      </item>
      <item>
@@ -1286,8 +1452,8 @@
          </property>
          <item>
           <widget class="QTextEdit" name="com_inp_body">
-           <property name="placeholderText">
-            <string>Comment body</string>
+           <property name="acceptRichText">
+            <bool>false</bool>
            </property>
           </widget>
          </item>
@@ -1373,6 +1539,9 @@
        </property>
        <property name="text">
         <string>Parameters</string>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
        </property>
       </widget>
      </item>
