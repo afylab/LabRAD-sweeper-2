@@ -1,5 +1,6 @@
 """ This file contains list of servers and settings to be ignored by the sweeper (for selecting LabRAD servers and settings) """
 
+# any server whose name ends with "_serial_server" is assumed to be a serial server, and is ignored automatically. No need to add it manually.
 SERVERS = [
 	"manager",
 	"registry",

@@ -1348,7 +1348,7 @@
             </spacer>
            </item>
            <item>
-            <widget class="QCheckBox" name="rec_cb_ignore_all">
+            <widget class="QPushButton" name="rec_btn_ignore_all">
              <property name="text">
               <string>Ignore All (setting written as parameter)</string>
              </property>
