@@ -14,9 +14,9 @@ class proto_swept_setting(object):
 		self.vds_dd       = None
 		self.vds_name     = ""
 		self.vds_id       = ""
-		self.rad_server     = None
-		self.rad_device     = None
-		self.rad_setting    = None
+		self.rad_server     = -1 # -1 = none selected
+		self.rad_device     = -1 #
+		self.rad_setting    = -1 # 
 		self.rad_input_count = 0
 		self.rad_inputs      = []
 		self.rad_sweep_slot  = None
@@ -30,9 +30,9 @@ class proto_recorded_setting(object):
 		self.vds_dd       = None
 		self.vds_name     = ""
 		self.vds_id       = ""
-		self.rad_server     = None
-		self.rad_device     = None
-		self.rad_setting    = None
+		self.rad_server     = -1
+		self.rad_device     = -1
+		self.rad_setting    = -1
 		self.rad_input_count = 0
 		self.rad_inputs     = []
 
@@ -42,7 +42,6 @@ def get_is_sweepable(setting):
 	if len(setting.accepts) == 0:return False
 	if 'v' in setting.accepts[0]:return True
 	return False
-
 def get_is_recordable(setting):
 	"""determines if a setting can be recorded"""
 	if len(setting.returns) == 0:return False
@@ -54,7 +53,6 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 	def __init__(self,parent=None):
 		super(SetupWindow,self).__init__(parent)
 		self.setupUi(self)
-
 		self.labrad_connect() # connect to LabRAD, fetch servers/devices, etc
 		self.rig() # hook UI to functionality
 
@@ -122,7 +120,6 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 
 
 		print('\n')
-			
 
 
 	def rig(self):
@@ -180,6 +177,7 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.swp_inp_coeff_4.textChanged.connect(self.update_swept_setting_data)
 		self.swp_inp_coeff_5.textChanged.connect(self.update_swept_setting_data)
 
+
 		# recorded settings
 		self.rec_btn_add.clicked.connect(self.add_recorded_setting)
 		self.rec_btn_del.clicked.connect(self.del_recorded_setting)
@@ -189,6 +187,8 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.rec_inp_label.textChanged.connect(self.update_recorded_setting_name)
 		self.rec_dd_type.currentIndexChanged.connect(self.update_recorded_setting_type)
 		self.rec_btn_ignore_all.clicked.connect(self.rec_ignore_all)
+
+		self.rec_dd_rad_server.currentIndexChanged.connect(self.update_rec_rad_dds)
 
 		self.rec_inp_label.textChanged.connect(self.update_recorded_setting_data)
 		self.rec_dd_type.currentIndexChanged.connect(self.update_recorded_setting_data)
@@ -205,6 +205,9 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.rec_cb_ignore_3.stateChanged.connect(self.update_recorded_setting_data)
 		self.rec_cb_ignore_4.stateChanged.connect(self.update_recorded_setting_data)
 		self.rec_cb_ignore_5.stateChanged.connect(self.update_recorded_setting_data)
+
+		self.vis_swp(False)
+		self.vis_rec(False)
 
 
 	# recorded settings functions
@@ -223,7 +226,9 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 			if reselect:self.fetch_recorded_setting_data()
 	def fetch_recorded_setting_data(self):
 		n = self.rec_list_settings.currentRow()
-		if n == -1:return
+		if n == -1:
+			self.vis_rec(False)
+			return
 		if n >= len(self.recorded_settings):return
 
 		label    = self.recorded_settings[n].label
@@ -237,9 +242,13 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		i3       = self.recorded_settings[n].ignore[3]
 		i4       = self.recorded_settings[n].ignore[4]
 		i5       = self.recorded_settings[n].ignore[5]
+		rad_server  = self.recorded_settings[n].rad_server
+		rad_device  = self.recorded_settings[n].rad_device
+		rad_setting = self.recorded_settings[n].rad_setting
 
 		self.rec_inp_label.setText(label)
 		self.rec_dd_type.setCurrentIndex(_type)
+		self.rec_dd_vds.setCurrentIndex(-1)
 		self.rec_dd_builtins.setCurrentIndex(builtin)
 		self.rec_inp_vds_name.setText(vds_name)
 		self.rec_inp_vds_id.setText(vds_id)
@@ -250,6 +259,11 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.rec_cb_ignore_4.setChecked(i4)
 		self.rec_cb_ignore_5.setChecked(i5)
 
+		self.rec_dd_rad_server.setCurrentIndex(rad_server)
+		self.rec_dd_rad_device.setCurrentIndex(rad_device)
+		self.rec_dd_rad_setting.setCurrentIndex(rad_setting)
+
+		self.vis_rec(True)
 		self.update_recorded_setting_type()
 	def update_recorded_vds_data(self):
 		c = self.vds_rec[self.rec_dd_vds.currentIndex()]
@@ -273,9 +287,9 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.recorded_settings[n].vds_name     = str(self.rec_inp_vds_name.text())
 		self.recorded_settings[n].vds_id       = str(self.rec_inp_vds_id.text())
 		self.recorded_settings[n].vds_dd       = str(self.rec_dd_vds.currentText())
-		self.recorded_settings[n].rad_server   = str(self.rec_dd_rad_server.currentText())
-		self.recorded_settings[n].rad_device   = str(self.rec_dd_rad_device.currentText())
-		self.recorded_settings[n].rad_setting  = str(self.rec_dd_rad_setting.currentText())
+		self.recorded_settings[n].rad_server   = self.rec_dd_rad_server.currentIndex()
+		self.recorded_settings[n].rad_device   = self.rec_dd_rad_device.currentIndex()
+		self.recorded_settings[n].rad_setting  = self.rec_dd_rad_setting.currentIndex()
 		self.recorded_settings[n].ignore       = [self.rec_cb_ignore_0.isChecked(),self.rec_cb_ignore_1.isChecked(),self.rec_cb_ignore_2.isChecked(),self.rec_cb_ignore_3.isChecked(),self.rec_cb_ignore_4.isChecked(),self.rec_cb_ignore_5.isChecked()]
 		self.recorded_settings[n].rad_inputs   = [str(self.recorded_labrad_inputs[k].inp_value.text()) for k in range(self.recorded_settings[n].rad_input_count)]
 	def rec_ignore_all(self):
@@ -287,7 +301,24 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.rec_cb_ignore_3.setChecked(not all_ignored)
 		self.rec_cb_ignore_4.setChecked(not all_ignored)
 		self.rec_cb_ignore_5.setChecked(not all_ignored)
-		
+	def update_rec_rad_dds(self):
+		s = str(self.rec_dd_rad_server.currentText())
+		self.rec_dd_rad_device.clear()
+		self.rec_dd_rad_setting.clear()
+		if s == '':return
+
+		if len(self.devices[s]) == 0:
+			print("Warning: selected server has no devices")
+		else:
+			self.rec_dd_rad_device.addItems([d[1] for d in self.devices[s]])
+
+		if len(self.settings[s][1])==0:
+			print("Warning: selected setver has no recordable settings")
+		else:
+			self.rec_dd_rad_setting.addItems(self.settings[s][1])
+
+		self.rec_dd_rad_device.setCurrentIndex(-1)
+		self.rec_dd_rad_setting.setCurrentIndex(-1)
 
 	# swept setting functions
 	def add_swept_setting(self):
@@ -306,7 +337,9 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 	def fetch_swept_setting_data(self):
 		"""writes the newly selected setting's data to the input fields"""
 		n = self.swp_list_settings.currentRow()
-		if n == -1:return
+		if n == -1:
+			self.vis_swp(False)
+			return
 		if n >= len(self.swept_settings):return
 
 		label    = self.swept_settings[n].label
@@ -322,12 +355,20 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		c4 = str(self.swept_settings[n].coeff[5])
 		c5 = str(self.swept_settings[n].coeff[6])
 
+		rad_server  = self.swept_settings[n].rad_server
+		rad_device  = self.swept_settings[n].rad_device
+		rad_setting = self.swept_settings[n].rad_setting
+
 		self.swp_inp_label.setText(label)
 		self.swp_dd_type.setCurrentIndex(_type)
+		self.swp_dd_vds.setCurrentIndex(-1)
 		self.swp_dd_builtins.setCurrentIndex(builtin)
 		self.swp_inp_vds_name.setText(vds_name)
 		self.swp_inp_vds_id.setText(vds_id)
 
+		self.swp_dd_rad_server.setCurrentIndex(rad_server)
+		self.swp_dd_rad_device.setCurrentIndex(rad_device)
+		self.swp_dd_rad_setting.setCurrentIndex(rad_setting)
 		#self.swp_dd_rad_server # have to populate dropdowns sequentially, and set the items
 		#self.swp_dd_rad_device # Store the indicies of the LabRAD lists, not the strings.
 		#self.swp_dd_rad_setting
@@ -340,6 +381,7 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.swp_inp_coeff_4.setText(c4)
 		self.swp_inp_coeff_5.setText(c5)
 
+		self.vis_swp(True)
 		self.update_swept_setting_type()
 	def update_swept_vds_data(self):
 		c = self.vds_swp[self.swp_dd_vds.currentIndex()]
@@ -364,9 +406,9 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.swept_settings[n].vds_name     = str(self.swp_inp_vds_name.text())
 		self.swept_settings[n].vds_id       = str(self.swp_inp_vds_id.text())
 		self.swept_settings[n].vds_dd       = str(self.swp_dd_vds.currentText())
-		self.swept_settings[n].rad_server   = str(self.swp_dd_rad_server.currentText())
-		self.swept_settings[n].rad_device   = str(self.swp_dd_rad_device.currentText())
-		self.swept_settings[n].rad_setting  = str(self.swp_dd_rad_setting.currentText())
+		self.swept_settings[n].rad_server   = self.swp_dd_rad_server.currentIndex()
+		self.swept_settings[n].rad_device   = self.swp_dd_rad_device.currentIndex()
+		self.swept_settings[n].rad_setting  = self.swp_dd_rad_setting.currentIndex()
 		self.swept_settings[n].coeff        = [str(self.swp_inp_coeff_const.text()),str(self.swp_inp_coeff_0.text()),str(self.swp_inp_coeff_1.text()),str(self.swp_inp_coeff_2.text()),str(self.swp_inp_coeff_3.text()),str(self.swp_inp_coeff_4.text()),str(self.swp_inp_coeff_5.text())]
 		self.swept_settings[n].rad_inputs   = [str(self.swept_labrad_inputs[k].inp_value.text()) for k in range(self.swept_settings[n].rad_input_count)]
 		self.swept_settings[n].rad_sweep_slot = self.get_labrad_sweep_slot()
@@ -376,13 +418,13 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 			if bar.cb_sweep.isChecked():return n
 			n+=1
 		return None
-
 	def update_swp_rad_dds(self):
 		s = str(self.swp_dd_rad_server.currentText())
 		
 		# blank the device and setting fields
 		self.swp_dd_rad_device.clear()
 		self.swp_dd_rad_setting.clear()
+		if s == '':return
 
 		# add the devices for the selected server
 		if len(self.devices[s]) == 0:
@@ -396,9 +438,9 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		else:
 			self.swp_dd_rad_setting.addItems(self.settings[s][0])
 
-		# Still need to make this saved to / loaded from proto settings on selection change.self
-		# save the indicies, not the text.
-		# How do I get this to work with list refreshing though?
+		self.swp_dd_rad_device.setCurrentIndex(-1)
+		self.swp_dd_rad_setting.setCurrentIndex(-1)
+
 
 	# managing comments
 	def add_comment(self):
@@ -477,6 +519,23 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 	# Functions for hiding/showing parts of UI
 	def set_vis(self,widgets,vis):
 		for widget in widgets:widget.setEnabled(vis)
+	def vis_swp(self,vis):
+		self.set_vis([
+			self.swp_inp_label,
+			self.swp_lbl_type,
+			self.swp_dd_type,
+			self.swp_lbl_coeff,
+			self.swp_lbl_coeff_const,self.swp_inp_coeff_const,
+			self.swp_lbl_coeff_0,self.swp_inp_coeff_0,
+			self.swp_lbl_coeff_1,self.swp_inp_coeff_1,
+			self.swp_lbl_coeff_2,self.swp_inp_coeff_2,
+			self.swp_lbl_coeff_3,self.swp_inp_coeff_3,
+			self.swp_lbl_coeff_4,self.swp_inp_coeff_4,
+			self.swp_lbl_coeff_5,self.swp_inp_coeff_5,
+			],vis)
+		self.vis_swp_builtin(vis)
+		self.vis_swp_labrad(vis)
+		self.vis_swp_vds(vis)
 	def vis_swp_labrad(self,vis):
 		self.set_vis([
 			self.swp_lbl_rad,
@@ -505,6 +564,19 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 			self.swp_lbl_builtins,
 			self.swp_dd_builtins,
 			],vis)
+	def vis_rec(self,vis):
+		self.set_vis([
+			self.rec_inp_label,
+			self.rec_lbl_type,
+			self.rec_dd_type,
+			self.rec_lbl_ignore,
+			self.rec_cb_ignore_0,self.rec_cb_ignore_1,self.rec_cb_ignore_2,
+			self.rec_cb_ignore_3,self.rec_cb_ignore_4,self.rec_cb_ignore_5,
+			self.rec_btn_ignore_all,
+			],vis)
+		self.vis_rec_labrad(vis)
+		self.vis_rec_vds(vis)
+		self.vis_rec_builtin(vis)
 	def vis_rec_labrad(self,vis):
 		self.set_vis([
 			self.rec_lbl_rad,
