@@ -20,36 +20,35 @@ class proto_swept_setting(object):
 		self.rad_input_count = 0
 		self.rad_inputs      = []
 		self.rad_sweep_slot  = None
-
-	def get_is_valid(self,axis_count):
-		pass
-
 class proto_recorded_setting(object):
 	"""Houses the data associated with a recorded setting that hasn't been added to a sweep yet"""
 	def __init__(self,n):
 		self.label  = "recorded setting {n}".format(n=n)
-		self.type   = "vds"
+		self.type   = "VDS"
 		self.ignore = [False,False,False,False,False,False]
 		self.builtin_type = None
-		self.vds_name     = None
-		self.vds_id       = None
+		self.vds_dd       = None
+		self.vds_name     = ""
+		self.vds_id       = ""
 		self.rad_server     = None
 		self.rad_device     = None
 		self.rad_setting    = None
+		self.rad_input_count = 0
 		self.rad_inputs     = []
-
-
-
-
 
 
 def get_is_sweepable(setting):
 	"""determines if a setting can be swept"""
-	return True # placeholder
+	if len(setting.accepts) == 0:return False
+	if 'v' in setting.accepts[0]:return True
+	return False
 
 def get_is_recordable(setting):
 	"""determines if a setting can be recorded"""
-	return True # placeholder
+	if len(setting.returns) == 0:return False
+	if 'v' in setting.returns[0]:return True
+	return False
+
 
 class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 	def __init__(self,parent=None):
@@ -94,10 +93,15 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 			rec_settings = []
 			for setting in self._cxn.servers[server].settings:
 				if setting.startswith('signal__'):continue
-				if setting in SETTINGS[server]:continue
+				if server in SETTINGS.keys():
+					if setting in SETTINGS[server]:continue
 				if get_is_sweepable(self._cxn.servers[server].settings[setting]):swp_settings.append(setting)
 				if get_is_recordable(self._cxn.servers[server].settings[setting]):rec_settings.append(setting)
 			self.settings.update([ [server,[swp_settings,rec_settings]] ])
+
+		# Populate server dropdowns with servers that have relevant settings
+		self.swp_dd_rad_server.addItems([s for s in self.servers if len(self.settings[s][0])>0])
+		self.rec_dd_rad_server.addItems([s for s in self.servers if len(self.settings[s][1])>0])
 
 		# VDS
 		if not("virtual_device_server" in self._cxn.servers):
@@ -154,10 +158,13 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.swp_list_settings.currentRowChanged.connect(self.fetch_swept_setting_data)
 
 		self.swp_dd_vds.activated.connect(self.update_swept_vds_data)
-		self.swp_inp_label.textChanged.connect(self.update_swept_setting_data)
 		self.swp_inp_label.textChanged.connect(self.update_swept_setting_name)
-		self.swp_dd_type.currentIndexChanged.connect(self.update_swept_setting_data)
 		self.swp_dd_type.currentIndexChanged.connect(self.update_swept_setting_type)
+
+		self.swp_dd_rad_server.currentIndexChanged.connect(self.update_swp_rad_dds)
+
+		self.swp_inp_label.textChanged.connect(self.update_swept_setting_data)
+		self.swp_dd_type.currentIndexChanged.connect(self.update_swept_setting_data)
 		self.swp_dd_builtins.currentIndexChanged.connect(self.update_swept_setting_data)
 		self.swp_dd_vds.currentIndexChanged.connect(self.update_swept_setting_data)
 		self.swp_inp_vds_name.textChanged.connect(self.update_swept_setting_data)
@@ -172,6 +179,115 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.swp_inp_coeff_3.textChanged.connect(self.update_swept_setting_data)
 		self.swp_inp_coeff_4.textChanged.connect(self.update_swept_setting_data)
 		self.swp_inp_coeff_5.textChanged.connect(self.update_swept_setting_data)
+
+		# recorded settings
+		self.rec_btn_add.clicked.connect(self.add_recorded_setting)
+		self.rec_btn_del.clicked.connect(self.del_recorded_setting)
+		self.rec_list_settings.currentRowChanged.connect(self.fetch_recorded_setting_data)
+
+		self.rec_dd_vds.activated.connect(self.update_recorded_vds_data)
+		self.rec_inp_label.textChanged.connect(self.update_recorded_setting_name)
+		self.rec_dd_type.currentIndexChanged.connect(self.update_recorded_setting_type)
+		self.rec_btn_ignore_all.clicked.connect(self.rec_ignore_all)
+
+		self.rec_inp_label.textChanged.connect(self.update_recorded_setting_data)
+		self.rec_dd_type.currentIndexChanged.connect(self.update_recorded_setting_data)
+		self.rec_dd_builtins.currentIndexChanged.connect(self.update_recorded_setting_data)
+		self.rec_dd_vds.currentIndexChanged.connect(self.update_recorded_setting_data)
+		self.rec_inp_vds_name.textChanged.connect(self.update_recorded_setting_data)
+		self.rec_inp_vds_id.textChanged.connect(self.update_recorded_setting_data)
+		self.rec_dd_rad_server.currentIndexChanged.connect(self.update_recorded_setting_data)
+		self.rec_dd_rad_device.currentIndexChanged.connect(self.update_recorded_setting_data)
+		self.rec_dd_rad_setting.currentIndexChanged.connect(self.update_recorded_setting_data)
+		self.rec_cb_ignore_0.stateChanged.connect(self.update_recorded_setting_data)
+		self.rec_cb_ignore_1.stateChanged.connect(self.update_recorded_setting_data)
+		self.rec_cb_ignore_2.stateChanged.connect(self.update_recorded_setting_data)
+		self.rec_cb_ignore_3.stateChanged.connect(self.update_recorded_setting_data)
+		self.rec_cb_ignore_4.stateChanged.connect(self.update_recorded_setting_data)
+		self.rec_cb_ignore_5.stateChanged.connect(self.update_recorded_setting_data)
+
+
+	# recorded settings functions
+	def add_recorded_setting(self):
+		n=len(self.recorded_settings)
+		rec=proto_recorded_setting(n)
+		self.recorded_settings.append(rec)
+		self.rec_list_settings.addItem(rec.label)
+	def del_recorded_setting(self):
+		if len(self.recorded_settings)==0:return
+		n=self.rec_list_settings.currentRow()
+		if n>=0:
+			reselect = (n != len(self.recorded_settings)-1)
+			self.recorded_settings.pop(n)
+			self.rec_list_settings.takeItem(n)
+			if reselect:self.fetch_recorded_setting_data()
+	def fetch_recorded_setting_data(self):
+		n = self.rec_list_settings.currentRow()
+		if n == -1:return
+		if n >= len(self.recorded_settings):return
+
+		label    = self.recorded_settings[n].label
+		_type    = self.type_index[self.recorded_settings[n].type]
+		builtin  = self.builtin_index[self.recorded_settings[n].builtin_type]
+		vds_name = self.recorded_settings[n].vds_name
+		vds_id   = self.recorded_settings[n].vds_id
+		i0       = self.recorded_settings[n].ignore[0]
+		i1       = self.recorded_settings[n].ignore[1]
+		i2       = self.recorded_settings[n].ignore[2]
+		i3       = self.recorded_settings[n].ignore[3]
+		i4       = self.recorded_settings[n].ignore[4]
+		i5       = self.recorded_settings[n].ignore[5]
+
+		self.rec_inp_label.setText(label)
+		self.rec_dd_type.setCurrentIndex(_type)
+		self.rec_dd_builtins.setCurrentIndex(builtin)
+		self.rec_inp_vds_name.setText(vds_name)
+		self.rec_inp_vds_id.setText(vds_id)
+		self.rec_cb_ignore_0.setChecked(i0)
+		self.rec_cb_ignore_1.setChecked(i1)
+		self.rec_cb_ignore_2.setChecked(i2)
+		self.rec_cb_ignore_3.setChecked(i3)
+		self.rec_cb_ignore_4.setChecked(i4)
+		self.rec_cb_ignore_5.setChecked(i5)
+
+		self.update_recorded_setting_type()
+	def update_recorded_vds_data(self):
+		c = self.vds_rec[self.rec_dd_vds.currentIndex()]
+		self.rec_inp_vds_name.setText(c[1])
+		self.rec_inp_vds_id.setText(c[0])
+	def update_recorded_setting_name(self,name):
+		if self.rec_list_settings.currentRow() == -1:return
+		self.rec_list_settings.currentItem().setText(name)
+	def update_recorded_setting_type(self):
+		t = str(self.rec_dd_type.currentText())
+		self.vis_rec_labrad(t=='LabRAD')
+		self.vis_rec_vds(t=='VDS')
+		self.vis_rec_builtin(t=='Builtin')
+	def update_recorded_setting_data(self):
+		n = self.rec_list_settings.currentRow()
+		if n == -1:return
+		
+		if str(self.rec_inp_label.text()) != "":self.recorded_settings[n].label = str(self.rec_inp_label.text())
+		self.recorded_settings[n].type         = str(self.rec_dd_type.currentText())
+		self.recorded_settings[n].builtin_type = str(self.rec_dd_builtins.currentText())
+		self.recorded_settings[n].vds_name     = str(self.rec_inp_vds_name.text())
+		self.recorded_settings[n].vds_id       = str(self.rec_inp_vds_id.text())
+		self.recorded_settings[n].vds_dd       = str(self.rec_dd_vds.currentText())
+		self.recorded_settings[n].rad_server   = str(self.rec_dd_rad_server.currentText())
+		self.recorded_settings[n].rad_device   = str(self.rec_dd_rad_device.currentText())
+		self.recorded_settings[n].rad_setting  = str(self.rec_dd_rad_setting.currentText())
+		self.recorded_settings[n].ignore       = [self.rec_cb_ignore_0.isChecked(),self.rec_cb_ignore_1.isChecked(),self.rec_cb_ignore_2.isChecked(),self.rec_cb_ignore_3.isChecked(),self.rec_cb_ignore_4.isChecked(),self.rec_cb_ignore_5.isChecked()]
+		self.recorded_settings[n].rad_inputs   = [str(self.recorded_labrad_inputs[k].inp_value.text()) for k in range(self.recorded_settings[n].rad_input_count)]
+	def rec_ignore_all(self):
+		if self.rec_list_settings.currentRow() == -1:return
+		all_ignored = all([self.rec_cb_ignore_0.isChecked(),self.rec_cb_ignore_1.isChecked(),self.rec_cb_ignore_2.isChecked(),self.rec_cb_ignore_3.isChecked(),self.rec_cb_ignore_4.isChecked(),self.rec_cb_ignore_5.isChecked()])
+		self.rec_cb_ignore_0.setChecked(not all_ignored)
+		self.rec_cb_ignore_1.setChecked(not all_ignored)
+		self.rec_cb_ignore_2.setChecked(not all_ignored)
+		self.rec_cb_ignore_3.setChecked(not all_ignored)
+		self.rec_cb_ignore_4.setChecked(not all_ignored)
+		self.rec_cb_ignore_5.setChecked(not all_ignored)
+		
 
 	# swept setting functions
 	def add_swept_setting(self):
@@ -190,6 +306,9 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 	def fetch_swept_setting_data(self):
 		"""writes the newly selected setting's data to the input fields"""
 		n = self.swp_list_settings.currentRow()
+		if n == -1:return
+		if n >= len(self.swept_settings):return
+
 		label    = self.swept_settings[n].label
 		_type    = self.type_index[self.swept_settings[n].type]
 		builtin  = self.builtin_index[self.swept_settings[n].builtin_type]
@@ -210,7 +329,7 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.swp_inp_vds_id.setText(vds_id)
 
 		#self.swp_dd_rad_server # have to populate dropdowns sequentially, and set the items
-		#self.swp_dd_rad_device
+		#self.swp_dd_rad_device # Store the indicies of the LabRAD lists, not the strings.
 		#self.swp_dd_rad_setting
 
 		self.swp_inp_coeff_const.setText(cc)
@@ -236,8 +355,9 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.vis_swp_vds(t=='VDS')
 		self.vis_swp_builtin(t=='Builtin')
 	def update_swept_setting_data(self):
-		if self.swp_list_settings.currentRow() == -1:return
 		n = self.swp_list_settings.currentRow()
+		if n == -1:return
+		
 		if str(self.swp_inp_label.text()) != "":self.swept_settings[n].label = str(self.swp_inp_label.text())
 		self.swept_settings[n].type         = str(self.swp_dd_type.currentText())
 		self.swept_settings[n].builtin_type = str(self.swp_dd_builtins.currentText())
@@ -257,10 +377,28 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 			n+=1
 		return None
 
+	def update_swp_rad_dds(self):
+		s = str(self.swp_dd_rad_server.currentText())
+		
+		# blank the device and setting fields
+		self.swp_dd_rad_device.clear()
+		self.swp_dd_rad_setting.clear()
 
-	# recorded settings functions
-	
+		# add the devices for the selected server
+		if len(self.devices[s]) == 0:
+			print("Warning: selected server has no devices")
+		else:
+			self.swp_dd_rad_device.addItems([d[1] for d in self.devices[s]])
 
+		# add the settings for the selected server
+		if len(self.settings[s][0]) == 0:
+			print("Warnign: selected server has no sweepable settings")
+		else:
+			self.swp_dd_rad_setting.addItems(self.settings[s][0])
+
+		# Still need to make this saved to / loaded from proto settings on selection change.self
+		# save the indicies, not the text.
+		# How do I get this to work with list refreshing though?
 
 	# managing comments
 	def add_comment(self):

@@ -953,7 +953,7 @@
             <number>0</number>
            </property>
            <item>
-            <widget class="QLineEdit" name="rec_inp_lbl">
+            <widget class="QLineEdit" name="rec_inp_label">
              <property name="placeholderText">
               <string>Label</string>
              </property>
