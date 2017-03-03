@@ -1,7 +1,7 @@
 import sys,labrad
 from PyQt4 import QtGui as gui, QtCore as core
 from qtdesigner import setup#,setup_axis_bar,setup_rec_bar,setup_swp_bar
-from qtdesigner.setup_widgets import AxisBar
+from qtdesigner.setup_widgets import AxisBar,SweptInputTable#,RecordedInputBar
 from labrad_exclude import SERVERS,SETTINGS
 
 class proto_swept_setting(object):
@@ -18,8 +18,7 @@ class proto_swept_setting(object):
 		self.rad_device     = -1 #
 		self.rad_setting    = -1 # 
 		self.rad_input_count = 0
-		self.rad_inputs      = []
-		self.rad_sweep_slot  = None
+		self.rad_inputs      = [] # list of [[input,sweep?],...]
 class proto_recorded_setting(object):
 	"""Houses the data associated with a recorded setting that hasn't been added to a sweep yet"""
 	def __init__(self,n):
@@ -34,7 +33,7 @@ class proto_recorded_setting(object):
 		self.rad_device     = -1
 		self.rad_setting    = -1
 		self.rad_input_count = 0
-		self.rad_inputs     = []
+		self.rad_inputs     = [] # list of input values
 
 
 def get_is_sweepable(setting):
@@ -177,6 +176,8 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.swp_inp_coeff_4.textChanged.connect(self.update_swept_setting_data)
 		self.swp_inp_coeff_5.textChanged.connect(self.update_swept_setting_data)
 
+		self.swp_input_table = SweptInputTable(self)
+		self.swp_lay_rad_inp.addWidget(self.swp_input_table)
 
 		# recorded settings
 		self.rec_btn_add.clicked.connect(self.add_recorded_setting)
@@ -369,9 +370,6 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.swp_dd_rad_server.setCurrentIndex(rad_server)
 		self.swp_dd_rad_device.setCurrentIndex(rad_device)
 		self.swp_dd_rad_setting.setCurrentIndex(rad_setting)
-		#self.swp_dd_rad_server # have to populate dropdowns sequentially, and set the items
-		#self.swp_dd_rad_device # Store the indicies of the LabRAD lists, not the strings.
-		#self.swp_dd_rad_setting
 
 		self.swp_inp_coeff_const.setText(cc)
 		self.swp_inp_coeff_0.setText(c0)
@@ -440,6 +438,20 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 
 		self.swp_dd_rad_device.setCurrentIndex(-1)
 		self.swp_dd_rad_setting.setCurrentIndex(-1)
+
+	def update_swp_rad_inputs(self,index):
+		n=self.swp_list_settings.currentIndex()
+		if n == -1:return
+		server  = str(self.swp_dd_rad_server.currentText())
+		setting = str(self.swp_dd_rad_setting.currentText())
+
+		if len(setting)==0:
+			self.swp_input_table.set_inputs([])
+			return
+
+		setting = self._cxn.servers[server].settings[setting]
+
+
 
 
 	# managing comments
@@ -539,10 +551,12 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 	def vis_swp_labrad(self,vis):
 		self.set_vis([
 			self.swp_lbl_rad,
-			self.swp_lbl_rad_inp_name,
-			self.swp_lbl_rad_inp_units,
-			self.swp_lbl_rad_inp_value,
-			self.swp_lbl_rad_inp_sweep,
+			#self.swp_lbl_rad_inp_name,
+			#self.swp_lbl_rad_inp_units,
+			#self.swp_lbl_rad_inp_value,
+			#self.swp_lbl_rad_inp_sweep,
+			self.swp_lbl_rad_input_req,
+			self.swp_btn_rad_set_inputs,
 			self.swp_lbl_rad_server,
 			self.swp_lbl_rad_device,
 			self.swp_lbl_rad_setting,
@@ -580,9 +594,11 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 	def vis_rec_labrad(self,vis):
 		self.set_vis([
 			self.rec_lbl_rad,
-			self.rec_lbl_rad_inp_name,
-			self.rec_lbl_rad_inp_units,
-			self.rec_lbl_rad_inp_value,
+			#self.rec_lbl_rad_inp_name,
+			#self.rec_lbl_rad_inp_units,
+			#self.rec_lbl_rad_inp_value,
+			self.rec_lbl_rad_input_req,
+			self.rec_btn_rad_set_inputs,
 			self.rec_lbl_rad_server,
 			self.rec_lbl_rad_device,
 			self.rec_lbl_rad_setting,

@@ -36,14 +36,12 @@ class AxisBar(gui.QWidget):
 		self.btn_down.clicked.connect(self.move_down)
 		self.btn_up.clicked.connect(self.move_up)
 		self.btn_del.clicked.connect(self.delete)
-
 	def set_priority(self,priority):
 		if str(self.inp_name.text()) == "Axis {n}".format(n=self.priority):
 			self.inp_name.setText("Axis {n}".format(n=priority))
 
 		self.priority = priority
 		self.lbl_priority.setText(str(self.priority))
-
 	def move_down(self):
 		if self.priority >= len(self.parent.axes)-1: return
 
@@ -56,8 +54,6 @@ class AxisBar(gui.QWidget):
 
 		self.parent.layout_axis_list.insertWidget(self.priority-1,self.parent.axes[self.priority-1])
 		self.parent.layout_axis_list.insertWidget(self.priority,self)
-
-
 	def move_up(self):
 		if self.priority == 0:return
 
@@ -70,7 +66,6 @@ class AxisBar(gui.QWidget):
 
 		self.parent.layout_axis_list.insertWidget(self.priority,self)
 		self.parent.layout_axis_list.insertWidget(self.priority+1,self.parent.axes[self.priority+1])
-	
 	def delete(self):
 		self.parent.layout_axis_list.removeWidget(self)
 		self.parent.axes.pop(self.priority)
@@ -78,3 +73,64 @@ class AxisBar(gui.QWidget):
 			self.parent.axes[n].set_priority(self.parent.axes[n].priority-1)
 		self.deleteLater()
 		self.parent.update_axis_count()
+
+class SweptInputBar(gui.QWidget):
+	def __init__(self,parent,name='',units=''):
+		super(SweptInputBar,self).__init__(parent)
+		self.parent=parent
+
+		self.layout = gui.QHBoxLayout()
+		self.layout.setSpacing(0)
+		self.layout.setContentsMargins(0,0,0,0)
+
+		self.lbl_name  = gui.QLineEdit(name,self) ; self.lbl_name.setReadOnly(True)
+		self.lbl_units = gui.QLineEdit(units,self); self.lbl_units.setReadOnly(True)
+		self.inp_value = gui.QLineEdit(self)
+		self.cb_sweep  = gui.QCheckBox(self)      ; self.cb_sweep.setEnabled(units == 'v')
+
+		self.layout.addWidget(self.lbl_name , 1)
+		self.layout.addWidget(self.lbl_units, 1)
+		self.layout.addWidget(self.inp_value, 1)
+		self.layout.addWidget(self.cb_sweep , 1)
+
+		# Make these widgets part of the proto_ objects & swap them out
+		# .deleteLater when deleting setting, or changing # of inputs
+class SweptInputTable(gui.QWidget):
+	def __init__(self,parent):
+		super(SweptInputTable,self).__init__(parent)
+		self.parent=parent
+
+		self.layout = gui.QVBoxLayout()
+		self.layout.setSpacing(0)
+		self.layout.setContentsMargins(0,0,0,0)
+
+	def set_inputs(self,inputs):
+		while self.layout.count() > 0:
+			bar = self.layout.takeAt(0)
+			try:
+				bar.inp_value.textChanged.disconnect()
+				bar.ch_sweep.stateChanged.disconnect()
+			except:
+				pass
+			bar.deleteLater()
+
+		bars = []
+		for inp in inputs:
+			# inp = [name,units]
+			bar = SweptInputBar(self,*inp)
+			self.layout.addWidget(bar)
+			bars.append(bar)
+			bar.inp_value.textChanged.connect(self.parent.update_swept_setting_data)
+			bar.cb_sweep.stateChanged.connect(self.parent.update_swept_setting_data)
+
+class SweptInputsDialog(gui.QDialog):
+	def __init__(self,parent,setting):
+		super(SweptInputsDialog,self).__init__(parent)
+		self.parent = parent
+
+		acc = setting.accepts[0]
+		if acc.startswith('('): acc=acc[1:]
+		if acc.endswith(')'):   acc=acc[:-1]
+		inputs = [["",u] for u in acc]
+
+		self.setWindowTitle("Setting inputs for {name}".format(name=setting.name))

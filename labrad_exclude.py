@@ -11,4 +11,5 @@ SERVERS = [
 # note that signals are automatically excluded. If the setting name begins with 'signal__' it is assumed to be a signal.
 SETTINGS = {
 	"dcbox_quad_ad5780":["connect","debug","deselect_device","echo","id","initialize","list_devices","lock_device","ready","refresh_devices","release_device","select_device","send_voltage_signals"],
+	"ad5764_dcbox":["lock_device"],
 	}

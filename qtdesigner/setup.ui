@@ -466,42 +466,15 @@
               <number>0</number>
              </property>
              <item>
-              <widget class="QLineEdit" name="swp_lbl_rad_inp_name">
+              <widget class="QLineEdit" name="swp_lbl_rad_input_req">
                <property name="text">
-                <string>Name</string>
+                <string/>
                </property>
                <property name="readOnly">
                 <bool>true</bool>
                </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="swp_lbl_rad_inp_units">
-               <property name="text">
-                <string>Units</string>
-               </property>
-               <property name="readOnly">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="swp_lbl_rad_inp_value">
-               <property name="text">
-                <string>Value</string>
-               </property>
-               <property name="readOnly">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="swp_lbl_rad_inp_sweep">
-               <property name="text">
-                <string>Sweep?</string>
-               </property>
-               <property name="readOnly">
-                <bool>true</bool>
+               <property name="placeholderText">
+                <string>Input Requirements</string>
                </property>
               </widget>
              </item>
@@ -513,6 +486,13 @@
               <number>0</number>
              </property>
             </layout>
+           </item>
+           <item>
+            <widget class="QPushButton" name="swp_btn_rad_set_inputs">
+             <property name="text">
+              <string>Set Inputs</string>
+             </property>
+            </widget>
            </item>
            <item>
             <spacer name="verticalSpacer_4">
@@ -1197,32 +1177,15 @@
               <number>0</number>
              </property>
              <item>
-              <widget class="QLineEdit" name="rec_lbl_rad_inp_name">
+              <widget class="QLineEdit" name="rec_lbl_rad_input_req">
                <property name="text">
-                <string>Name</string>
+                <string/>
                </property>
                <property name="readOnly">
                 <bool>true</bool>
                </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="rec_lbl_rad_inp_units">
-               <property name="text">
-                <string>Units</string>
-               </property>
-               <property name="readOnly">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="rec_lbl_rad_inp_value">
-               <property name="text">
-                <string>Value</string>
-               </property>
-               <property name="readOnly">
-                <bool>true</bool>
+               <property name="placeholderText">
+                <string>Input Requirements</string>
                </property>
               </widget>
              </item>
@@ -1234,6 +1197,13 @@
               <number>0</number>
              </property>
             </layout>
+           </item>
+           <item>
+            <widget class="QPushButton" name="rec_btn_rad_set_inputs">
+             <property name="text">
+              <string>Set Inputs</string>
+             </property>
+            </widget>
            </item>
            <item>
             <spacer name="verticalSpacer_9">
