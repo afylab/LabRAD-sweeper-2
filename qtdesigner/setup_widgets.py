@@ -11,7 +11,8 @@ class AxisBar(gui.QWidget):
 		self.inp_start    = gui.QLineEdit(self)
 		self.inp_stop     = gui.QLineEdit(self)
 		self.inp_points   = gui.QLineEdit(self)
-		self.lbl_priority = gui.QLineEdit(self); self.lbl_priority.setReadOnly(True)
+		self.inp_delay    = gui.QLineEdit(self)
+		self.lbl_priority = gui.QLineEdit(self); self.lbl_priority.setReadOnly(True); self.lbl_priority.setStyleSheet("QLineEdit { background-color: rgb(224,224,224) }")
 		self.btn_up       = gui.QPushButton("Move Up",self)
 		self.btn_down     = gui.QPushButton("Move down",self)
 		self.btn_del      = gui.QPushButton("Delete",self)
@@ -19,14 +20,15 @@ class AxisBar(gui.QWidget):
 		self.layout = gui.QHBoxLayout()
 		self.layout.setSpacing(0)
 		self.layout.setContentsMargins(0,0,0,0)
-		self.layout.addWidget(self.inp_name,1)
-		self.layout.addWidget(self.inp_start,1)
-		self.layout.addWidget(self.inp_stop,1)
-		self.layout.addWidget(self.inp_points,1)
 		self.layout.addWidget(self.lbl_priority,1)
-		self.layout.addWidget(self.btn_up,1)
-		self.layout.addWidget(self.btn_down,1)
-		self.layout.addWidget(self.btn_del,1)
+		self.layout.addWidget(self.inp_name,2)
+		self.layout.addWidget(self.inp_start,2)
+		self.layout.addWidget(self.inp_stop,2)
+		self.layout.addWidget(self.inp_points,2)
+		self.layout.addWidget(self.inp_delay,2)
+		self.layout.addWidget(self.btn_up,2)
+		self.layout.addWidget(self.btn_down,2)
+		self.layout.addWidget(self.btn_del,2)
 
 		if name:self.inp_name.setText(name)
 		self.set_priority(priority)
@@ -36,6 +38,13 @@ class AxisBar(gui.QWidget):
 		self.btn_down.clicked.connect(self.move_down)
 		self.btn_up.clicked.connect(self.move_up)
 		self.btn_del.clicked.connect(self.delete)
+
+		self.inp_start.textEdited.connect(self.parent.check_axes)
+		self.inp_stop.textEdited.connect(self.parent.check_axes)
+		self.inp_points.textEdited.connect(self.parent.check_axes)
+		self.inp_delay.textEdited.connect(self.parent.check_axes)
+		self.inp_name.textEdited.connect(self.parent.check_axes)
+
 	def set_priority(self,priority):
 		if str(self.inp_name.text()) == "Axis {n}".format(n=self.priority):
 			self.inp_name.setText("Axis {n}".format(n=priority))
@@ -54,6 +63,7 @@ class AxisBar(gui.QWidget):
 
 		self.parent.layout_axis_list.insertWidget(self.priority-1,self.parent.axes[self.priority-1])
 		self.parent.layout_axis_list.insertWidget(self.priority,self)
+		self.parent.check_axes()
 	def move_up(self):
 		if self.priority == 0:return
 
@@ -66,11 +76,23 @@ class AxisBar(gui.QWidget):
 
 		self.parent.layout_axis_list.insertWidget(self.priority,self)
 		self.parent.layout_axis_list.insertWidget(self.priority+1,self.parent.axes[self.priority+1])
+		self.parent.check_axes()
 	def delete(self):
 		self.parent.layout_axis_list.removeWidget(self)
 		self.parent.axes.pop(self.priority)
 		for n in range(self.priority,len(self.parent.axes)):
 			self.parent.axes[n].set_priority(self.parent.axes[n].priority-1)
+
+		self.btn_down.clicked.disconnect()
+		self.btn_up.clicked.disconnect()
+		self.btn_del.clicked.disconnect()
+
+		self.inp_start.textEdited.disconnect()
+		self.inp_stop.textEdited.disconnect()
+		self.inp_points.textEdited.disconnect()
+		self.inp_delay.textEdited.disconnect()
+		self.inp_name.textEdited.disconnect()
+
 		self.deleteLater()
 		self.parent.update_axis_count()
 
@@ -123,6 +145,7 @@ class SweptInputTable(gui.QWidget):
 			bar.inp_value.textChanged.connect(self.parent.update_swept_setting_data)
 			bar.cb_sweep.stateChanged.connect(self.parent.update_swept_setting_data)
 
+# do it with dialogs
 class SweptInputsDialog(gui.QDialog):
 	def __init__(self,parent,setting):
 		super(SweptInputsDialog,self).__init__(parent)
@@ -134,3 +157,4 @@ class SweptInputsDialog(gui.QDialog):
 		inputs = [["",u] for u in acc]
 
 		self.setWindowTitle("Setting inputs for {name}".format(name=setting.name))
+

@@ -28,10 +28,23 @@
       <number>0</number>
      </property>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="1,1,1,1,1,3">
+      <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="1,2,2,2,2,2,6">
        <property name="spacing">
         <number>0</number>
        </property>
+       <item>
+        <widget class="QLineEdit" name="axes_lbl_priority">
+         <property name="styleSheet">
+          <string notr="true">QLineEdit { background-color: rgb(224,224,224) }</string>
+         </property>
+         <property name="text">
+          <string>Priority</string>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
        <item>
         <widget class="QLineEdit" name="axes_lbl_name">
          <property name="styleSheet">
@@ -85,15 +98,12 @@
         </widget>
        </item>
        <item>
-        <widget class="QLineEdit" name="axes_lbl_priority">
+        <widget class="QLineEdit" name="lineEdit">
          <property name="styleSheet">
           <string notr="true">QLineEdit { background-color: rgb(224,224,224) }</string>
          </property>
          <property name="text">
-          <string>Priority</string>
-         </property>
-         <property name="readOnly">
-          <bool>true</bool>
+          <string>Delay (ms)</string>
          </property>
         </widget>
        </item>
@@ -466,15 +476,9 @@
               <number>0</number>
              </property>
              <item>
-              <widget class="QLineEdit" name="swp_lbl_rad_input_req">
-               <property name="text">
-                <string/>
-               </property>
+              <widget class="QTextEdit" name="swp_lbl_rad_input_req">
                <property name="readOnly">
                 <bool>true</bool>
-               </property>
-               <property name="placeholderText">
-                <string>Input Requirements</string>
                </property>
               </widget>
              </item>
@@ -1177,15 +1181,9 @@
               <number>0</number>
              </property>
              <item>
-              <widget class="QLineEdit" name="rec_lbl_rad_input_req">
-               <property name="text">
-                <string/>
-               </property>
+              <widget class="QTextEdit" name="rec_lbl_rad_input_req">
                <property name="readOnly">
                 <bool>true</bool>
-               </property>
-               <property name="placeholderText">
-                <string>Input Requirements</string>
                </property>
               </widget>
              </item>
@@ -1340,7 +1338,7 @@
      <rect>
       <x>680</x>
       <y>0</y>
-      <width>271</width>
+      <width>273</width>
       <height>151</height>
      </rect>
     </property>
@@ -1355,6 +1353,9 @@
        </property>
        <item>
         <widget class="QLineEdit" name="status_lbl_status">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Status of the sweep setup (whether or not the sweep is ready to be started)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="text">
           <string/>
          </property>
@@ -1376,14 +1377,75 @@
       </layout>
      </item>
      <item>
-      <widget class="QListWidget" name="status_list_issues"/>
-     </item>
-     <item>
-      <widget class="QCheckBox" name="status_cb_start_paused">
-       <property name="text">
-        <string>Start Paused</string>
+      <widget class="QListWidget" name="status_list_issues">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;List of issues preventing a sweep from being started&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
       </widget>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_4">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="QLineEdit" name="dv_inp_location">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;File location in the DataVault directory.&lt;/p&gt;&lt;p&gt;Subfolders should be separated by backslashes ( \ )&lt;/p&gt;&lt;p&gt;Example:&lt;/p&gt;&lt;p&gt;capacitance\2017\may&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="placeholderText">
+          <string>DataVault file location</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="dv_inp_filename">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;File name of DataVault log for this sweep&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="placeholderText">
+          <string>DataVault file name</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_5">
+       <item>
+        <widget class="QCheckBox" name="status_cb_start_paused">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If this is checked, the sweep will be created but not start taking data or changing settings until it is manually un-paused.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Start Paused</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer_7">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="cb_no_log">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If this box is checked, no DataVault file will be created for this sweep, and the data created will not be logged anywhere.&lt;/p&gt;&lt;p&gt;This is intended to be used on sweeps for testing purposes.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Do not log</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </item>
     </layout>
    </widget>
