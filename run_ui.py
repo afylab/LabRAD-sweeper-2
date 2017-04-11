@@ -8,7 +8,8 @@ strn = lambda s:str(s) if s is not None else ""
 
 class proto_swept_setting(object):
 	"""Houses the data associated with a swept setting that hasn't been added to a sweep yet"""
-	def __init__(self,n):
+	def __init__(self,n,_cxn):
+		self._cxn = _cxn
 		self.label = "swept setting {n}".format(n=n) # Default label is swept setting n.
 		self.type  = "VDS" # Defaults to VDS setting
 		self.coeff = [0,0,0,0,0,0,0]
@@ -29,9 +30,37 @@ class proto_swept_setting(object):
 		self.rad_inputs=[]
 		self.rad_sweep_slot=None
 		self.rad_status=None
+	def validate(self,n_axes):
+		"""Checks whether or not setting can be used as is to create a setting in a sweep"""
+		if self.label == "":return False # blank labels is a no-go
+
+		for n in range(n_axes+1):
+			try:
+				float(self.coeff[n])
+			except:
+				return False
+
+		if self.type == 'Builtin':return False # For now, builtins are not implemented
+		if self.type == 'VDS':
+			if [self.vds_id,self.vds_name] in self._cxn.virtual_device_server.list_channels():
+				return True
+			else:
+				return False
+		if self.type == 'LabRAD':
+			if self.rad_server  == -1:return False
+			if self.rad_device  == -1:return False
+			if self.rad_setting == -1:return False
+			if self.rad_input_count < 1:return False
+			if self.rad_sweep_slot == None:return False
+			if self.rad_status == 'No specification required':return True
+			if self.rad_status == 'All inputs satisfied':return True
+			return False
+
+
 class proto_recorded_setting(object):
 	"""Houses the data associated with a recorded setting that hasn't been added to a sweep yet"""
-	def __init__(self,n):
+	def __init__(self,n,_cxn):
+		self._cxn = _cxn
 		self.label  = "recorded setting {n}".format(n=n)
 		self.type   = "VDS"
 		self.ignore = [False,False,False,False,False,False]
@@ -50,6 +79,23 @@ class proto_recorded_setting(object):
 		self.rad_input_count=0
 		self.rad_inputs=[]
 		self.rad_status=None
+	def validate(self):
+		if self.label == "":return False
+		if self.type == 'Builtin':return False
+		if self.type == 'VDS':
+			if [self.vds_id,self.vds_name] in self._cxn.virtual_device_server.list_channels():
+				return True
+			else:
+				return False
+		if self.type == 'LabRAD':
+			if self.rad_server  == -1:return False
+			if self.rad_device  == -1:return False
+			if self.rad_setting == -1:return False
+			if self.rad_status == 'No specification required':return True
+			if self.rad_status == 'All inputs satisfied':return True
+			return False
+
+
 
 def validate_dv_filename(filename):
 	if any(char in filename for char in '\n\t\\/*"\'[]{}();:=|.,?%<>'):
@@ -84,8 +130,8 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		# Issues (potential reasons why a sweep cannot be started) for each category
 		issues_axes     = ['no axes'] + ['axis {n} invalid'.format(n=n) for n in range(6)] + ['axis {n} incomplete'.format(n=n) for n in range(6)]
 		issues_dv       = ['no DataVault filename','no DataVault file location','invalid DataVault filename','invalid DataVault file location']
-		issues_swept    = []
-		issues_recorded = []
+		issues_swept    = ['no swept settings'   ,'incomplete or invalid swept setting']
+		issues_recorded = ['no recorded settings','incomplete or invalid swept setting']
 
 		self.issue_names = issues_axes + issues_dv + issues_swept + issues_recorded # list of all issue names
 		self.sweep_checks = {issue:False for issue in self.issue_names}             # dict describing whether or not each individual issues is in effect
@@ -282,9 +328,10 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 	# recorded settings functions
 	def add_recorded_setting(self):
 		n=len(self.recorded_settings)
-		rec=proto_recorded_setting(n)
+		rec=proto_recorded_setting(n,self._cxn)
 		self.recorded_settings.append(rec)
 		self.rec_list_settings.addItem(rec.label)
+		self.check_recorded()
 	def del_recorded_setting(self):
 		if len(self.recorded_settings)==0:return
 		n=self.rec_list_settings.currentRow()
@@ -293,6 +340,7 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 			self.recorded_settings.pop(n)
 			self.rec_list_settings.takeItem(n)
 			if reselect:self.fetch_recorded_setting_data()
+		self.check_recorded()
 	def fetch_recorded_setting_data(self):
 		n = self.rec_list_settings.currentRow()
 		if n == -1:
@@ -340,14 +388,17 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		c = self.vds_rec[self.rec_dd_vds.currentIndex()]
 		self.rec_inp_vds_name.setText(c[1])
 		self.rec_inp_vds_id.setText(c[0])
+		self.check_recorded()
 	def update_recorded_setting_name(self,name):
 		if self.rec_list_settings.currentRow() == -1:return
 		self.rec_list_settings.currentItem().setText(name)
+		self.check_recorded()
 	def update_recorded_setting_type(self):
 		t = str(self.rec_dd_type.currentText())
 		self.vis_rec_labrad(t=='LabRAD')
 		self.vis_rec_vds(t=='VDS')
 		self.vis_rec_builtin(t=='Builtin')
+		self.check_recorded()
 	def update_recorded_setting_data(self):
 		n = self.rec_list_settings.currentRow()
 		if n == -1:return
@@ -364,6 +415,7 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.recorded_settings[n].rad_device   = self.rec_dd_rad_device.currentIndex()
 		self.recorded_settings[n].rad_setting  = self.rec_dd_rad_setting.currentIndex()
 		self.recorded_settings[n].ignore       = [self.rec_cb_ignore_0.isChecked(),self.rec_cb_ignore_1.isChecked(),self.rec_cb_ignore_2.isChecked(),self.rec_cb_ignore_3.isChecked(),self.rec_cb_ignore_4.isChecked(),self.rec_cb_ignore_5.isChecked()]
+		self.check_recorded()
 		
 	def rec_ignore_all(self):
 		if self.rec_list_settings.currentRow() == -1:return
@@ -396,6 +448,7 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 
 		self.rec_dd_rad_device.setCurrentIndex(-1)
 		self.rec_dd_rad_setting.setCurrentIndex(-1)
+		self.check_recorded()
 
 	def update_rec_rad_inputs(self,index):
 		n=self.rec_list_settings.currentRow()
@@ -440,7 +493,7 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 			self.recorded_settings[n].rad_status = "Inputs required"
 
 		self.rec_lbl_rad_input_req.setText(strn(self.recorded_settings[n].rad_status))
-
+		self.check_recorded()
 	def rec_rad_set_inputs(self):
 		n=self.rec_list_settings.currentRow()
 		if n == -1:return
@@ -454,14 +507,16 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 			self.recorded_settings[n].rad_inputs = inputs
 			self.recorded_settings[n].rad_status = 'All inputs satisfied'
 			self.rec_lbl_rad_input_req.setText('All inputs satisfied')
+		self.check_recorded()
 
 
 	# swept setting functions
 	def add_swept_setting(self):
 		n = len(self.swept_settings)
-		swp = proto_swept_setting(n)
+		swp = proto_swept_setting(n,self._cxn)
 		self.swept_settings.append(swp)
 		self.swp_list_settings.addItem(swp.label) 
+		self.check_swept()
 	def del_swept_setting(self):
 		if len(self.swept_settings) == 0:return
 		n=self.swp_list_settings.currentRow()
@@ -470,6 +525,7 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 			self.swept_settings.pop(n)
 			self.swp_list_settings.takeItem(n)
 			if reselect:self.fetch_swept_setting_data()
+		self.check_swept()
 	def fetch_swept_setting_data(self):
 		"""writes the newly selected setting's data to the input fields"""
 		self.signals = False
@@ -526,16 +582,19 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		c = self.vds_swp[self.swp_dd_vds.currentIndex()]
 		self.swp_inp_vds_name.setText(c[1])
 		self.swp_inp_vds_id.setText(c[0])
+		self.check_swept()
 	def update_swept_setting_name(self,name):
 		if self.swp_list_settings.currentRow() == -1:return
 		if not self.signals:return
 		self.swp_list_settings.currentItem().setText(name)
+		self.check_swept()
 	def update_swept_setting_type(self):
 		"""Enables/disables input regions based on selected setting type"""
 		t = str(self.swp_dd_type.currentText())
 		self.vis_swp_labrad(t=='LabRAD')
 		self.vis_swp_vds(t=='VDS')
 		self.vis_swp_builtin(t=='Builtin')
+		self.check_swept()
 	def update_swept_setting_data(self):
 		n = self.swp_list_settings.currentRow()
 		if n == -1:return
@@ -553,14 +612,7 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.swept_settings[n].rad_device   = self.swp_dd_rad_device.currentIndex()
 		self.swept_settings[n].rad_setting  = self.swp_dd_rad_setting.currentIndex()
 		self.swept_settings[n].coeff        = [str(self.swp_inp_coeff_const.text()),str(self.swp_inp_coeff_0.text()),str(self.swp_inp_coeff_1.text()),str(self.swp_inp_coeff_2.text()),str(self.swp_inp_coeff_3.text()),str(self.swp_inp_coeff_4.text()),str(self.swp_inp_coeff_5.text())]
-		#self.swept_settings[n].rad_inputs   = [str(self.swept_labrad_inputs[k].inp_value.text()) for k in range(self.swept_settings[n].rad_input_count)]
-		#self.swept_settings[n].rad_sweep_slot = self.get_labrad_sweep_slot()
-	def get_labrad_sweep_slot(self):
-		n=0
-		for bar in self.swept_labrad_inputs:
-			if bar.cb_sweep.isChecked():return n
-			n+=1
-		return None
+		self.check_swept()
 	def update_swp_rad_dds(self):
 		n = self.swp_list_settings.currentRow()
 		s = str(self.swp_dd_rad_server.currentText())
@@ -586,6 +638,7 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 
 		self.swp_dd_rad_device.setCurrentIndex(-1)
 		self.swp_dd_rad_setting.setCurrentIndex(-1)
+		self.check_swept()
 
 	def update_swp_rad_inputs(self,index):
 		n=self.swp_list_settings.currentRow()
@@ -650,7 +703,7 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 				self.swept_settings[n].rad_sweep_slot=None
 
 		self.swp_lbl_rad_input_req.setText(strn(self.swept_settings[n].rad_status))
-
+		self.check_swept()
 	def swp_rad_set_inputs(self):
 		n = self.swp_list_settings.currentRow()
 		if n == -1:return
@@ -667,7 +720,7 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 			self.swept_settings[n].rad_sweep_slot = sweepSlot
 			self.swept_settings[n].rad_status     = 'All inputs satisfied'
 			self.swp_lbl_rad_input_req.setText('All inputs satisfied')
-
+		self.check_swept()
 
 
 	# managing comments
@@ -806,9 +859,21 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.check_sweep_status()
 	def check_swept(self):
 		"""Checks and updates issues related to swept settings"""
+		self.sweep_checks['no swept settings'] = len(self.swept_settings) == 0
+		self.sweep_checks['invalid or incomplete swept setting'] = False
+		for setting in self.swept_settings:
+			if setting.validate(len(self.axes)) == False:
+				self.sweep_checks['invalid or incomplete swept setting'] = True
+				break
 		self.check_sweep_status()
 	def check_recorded(self):
 		"""Checks and updates issues related to recorded settings"""
+		self.sweep_checks['no recoreded settings'] = len(self.recorded_settings) == 0
+		self.sweep_checks['invalid or incomplete recorded setting'] = False
+		for setting in self.recorded_settings:
+			if setting.validate() == False:
+				self.sweep_checks['invalid or incomplete recorded setting'] = True
+				break
 		self.check_sweep_status()
 
 
