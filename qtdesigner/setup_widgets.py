@@ -1,5 +1,24 @@
 from PyQt4 import QtGui as gui, QtCore as core
 
+strn = lambda s:str(s) if not (s is None) else ""
+
+is_sweepable = lambda units:units=='v'
+
+def validate_int(text):
+	text = str(text)
+	try:
+		int(text)
+		return True
+	except:
+		return False
+def validate_float(text):
+	text = str(text)
+	try:
+		float(text)
+		return True
+	except:
+		return False
+
 class AxisBar(gui.QWidget):
 	def __init__(self,parent,priority,name=None):
 		super(AxisBar,self).__init__(parent)
@@ -12,7 +31,7 @@ class AxisBar(gui.QWidget):
 		self.inp_stop     = gui.QLineEdit(self)
 		self.inp_points   = gui.QLineEdit(self)
 		self.inp_delay    = gui.QLineEdit(self)
-		self.lbl_priority = gui.QLineEdit(self); self.lbl_priority.setReadOnly(True); self.lbl_priority.setStyleSheet("QLineEdit { background-color: rgb(224,224,224) }")
+		self.header_priority = gui.QLineEdit(self); self.header_priority.setReadOnly(True); self.header_priority.setStyleSheet("QLineEdit { background-color: rgb(224,224,224) }")
 		self.btn_up       = gui.QPushButton("Move Up",self)
 		self.btn_down     = gui.QPushButton("Move down",self)
 		self.btn_del      = gui.QPushButton("Delete",self)
@@ -20,7 +39,7 @@ class AxisBar(gui.QWidget):
 		self.layout = gui.QHBoxLayout()
 		self.layout.setSpacing(0)
 		self.layout.setContentsMargins(0,0,0,0)
-		self.layout.addWidget(self.lbl_priority,1)
+		self.layout.addWidget(self.header_priority,1)
 		self.layout.addWidget(self.inp_name,2)
 		self.layout.addWidget(self.inp_start,2)
 		self.layout.addWidget(self.inp_stop,2)
@@ -50,7 +69,7 @@ class AxisBar(gui.QWidget):
 			self.inp_name.setText("Axis {n}".format(n=priority))
 
 		self.priority = priority
-		self.lbl_priority.setText(str(self.priority))
+		self.header_priority.setText(str(self.priority))
 	def move_down(self):
 		if self.priority >= len(self.parent.axes)-1: return
 
@@ -96,65 +115,163 @@ class AxisBar(gui.QWidget):
 		self.deleteLater()
 		self.parent.update_axis_count()
 
-class SweptInputBar(gui.QWidget):
-	def __init__(self,parent,name='',units=''):
-		super(SweptInputBar,self).__init__(parent)
-		self.parent=parent
+class InputDialogSwept(gui.QDialog):
+	def __init__(self,inputs,slot,parent=None):
+		""""""
+		# inputs is a list of [ [name,units,value] ]
+		# value = None if not yet specified
+		super(InputDialogSwept,self).__init__(parent)
 
-		self.layout = gui.QHBoxLayout()
-		self.layout.setSpacing(0)
-		self.layout.setContentsMargins(0,0,0,0)
+		self.setWindowTitle("Inputs for swept setting")
 
-		self.lbl_name  = gui.QLineEdit(name,self) ; self.lbl_name.setReadOnly(True)
-		self.lbl_units = gui.QLineEdit(units,self); self.lbl_units.setReadOnly(True)
-		self.inp_value = gui.QLineEdit(self)
-		self.cb_sweep  = gui.QCheckBox(self)      ; self.cb_sweep.setEnabled(units == 'v')
+		n_inputs = len(inputs)
 
-		self.layout.addWidget(self.lbl_name , 1)
-		self.layout.addWidget(self.lbl_units, 1)
-		self.layout.addWidget(self.inp_value, 1)
-		self.layout.addWidget(self.cb_sweep , 1)
+		self.grid = gui.QGridLayout(self)
+		self.grid.setContentsMargins(0,0,0,0)
+		self.grid.setSpacing(0)
 
-		# Make these widgets part of the proto_ objects & swap them out
-		# .deleteLater when deleting setting, or changing # of inputs
-class SweptInputTable(gui.QWidget):
-	def __init__(self,parent):
-		super(SweptInputTable,self).__init__(parent)
-		self.parent=parent
+		self.header_name  = gui.QLineEdit("name"  ,self); self.header_name.setReadOnly(True) ; self.grid.addWidget(self.header_name ,0,0)
+		self.header_units = gui.QLineEdit("units" ,self); self.header_units.setReadOnly(True); self.grid.addWidget(self.header_units,0,1)
+		self.header_value = gui.QLineEdit("value" ,self); self.header_value.setReadOnly(True); self.grid.addWidget(self.header_value,0,2)
+		self.header_sweep = gui.QLineEdit("sweep?",self); self.header_sweep.setReadOnly(True); self.grid.addWidget(self.header_sweep,0,3)
+		self.header_name.setStyleSheet("QLineEdit { background-color: rgb(224,224,224) }")
+		self.header_units.setStyleSheet("QLineEdit { background-color: rgb(224,224,224) }")
+		self.header_value.setStyleSheet("QLineEdit { background-color: rgb(224,224,224) }")
+		self.header_sweep.setStyleSheet("QLineEdit { background-color: rgb(224,224,224) }")
 
-		self.layout = gui.QVBoxLayout()
-		self.layout.setSpacing(0)
-		self.layout.setContentsMargins(0,0,0,0)
+		self.lbl_name  = [] # list of LineEdit objects that are input name  labels
+		self.lbl_units = [] # list of LineEdit objects that are input units labels
+		self.inp_value = [] # list of LineEdit objects that are input value inputs
+		self.cb_sweep  = [] # list of CheckBox objects (or None it input is not sweepable)
 
-	def set_inputs(self,inputs):
-		while self.layout.count() > 0:
-			bar = self.layout.takeAt(0)
+		first_button = True
+
+		for n in range(n_inputs):
+			lbl_name  = gui.QLineEdit(strn(inputs[n][0]),self); lbl_name.setReadOnly(True) ; self.grid.addWidget(lbl_name ,n+1,0); self.lbl_name.append(lbl_name)
+			lbl_units = gui.QLineEdit(strn(inputs[n][1]),self); lbl_units.setReadOnly(True); self.grid.addWidget(lbl_units,n+1,1); self.lbl_units.append(lbl_units)
+			inp_value = gui.QLineEdit(strn(inputs[n][2]),self);                              self.grid.addWidget(inp_value,n+1,2); self.inp_value.append(inp_value)
+			inp_value.textEdited.connect(self.validate)
+			if not(is_sweepable(inputs[n][1])):
+				self.cb_sweep.append(None)
+				self.grid.addItem(gui.QSpacerItem(0,0),n+1,3)
+			else:
+				cb_sweep = gui.QRadioButton(self)
+				cb_sweep.clicked.connect(lambda:cb_sweep.setChecked(True)) # By default with Radio Buttons, clicking the active one deactivates it so that none are checked. This disables that behavior.
+				cb_sweep.clicked.connect(self.validate)
+				cb_sweep.clicked.connect(self.update_value_inputs)
+				self.cb_sweep.append(cb_sweep)
+				if first_button:
+					if slot is None:cb_sweep.setChecked(True)
+					first_button=False
+				self.grid.addWidget(cb_sweep,n+1,3)
+
+		if not (slot is None):
 			try:
-				bar.inp_value.textChanged.disconnect()
-				bar.ch_sweep.stateChanged.disconnect()
+				self.cb_sweep[slot].setChecked(True)
 			except:
-				pass
-			bar.deleteLater()
+				for obj in self.cb_sweep:
+					if not (obj is None):
+						obj.setChecked(True)
+						break
 
-		bars = []
-		for inp in inputs:
-			# inp = [name,units]
-			bar = SweptInputBar(self,*inp)
-			self.layout.addWidget(bar)
-			bars.append(bar)
-			bar.inp_value.textChanged.connect(self.parent.update_swept_setting_data)
-			bar.cb_sweep.stateChanged.connect(self.parent.update_swept_setting_data)
+		self.btn_accept = gui.QPushButton("accept",self); self.btn_accept.clicked.connect(self.accept)
+		self.btn_cancel = gui.QPushButton("cancel",self); self.btn_cancel.clicked.connect(self.reject)
+		self.grid.addWidget(self.btn_accept,n+2,2)
+		self.grid.addWidget(self.btn_cancel,n+2,3)
 
-# do it with dialogs
-class SweptInputsDialog(gui.QDialog):
-	def __init__(self,parent,setting):
-		super(SweptInputsDialog,self).__init__(parent)
-		self.parent = parent
+		self.setLayout(self.grid)
+		self.update_value_inputs()
+		self.validate()
+	def validate(self):
+		for n in range(len(self.inp_value)):
 
-		acc = setting.accepts[0]
-		if acc.startswith('('): acc=acc[1:]
-		if acc.endswith(')'):   acc=acc[:-1]
-		inputs = [["",u] for u in acc]
+			if not (self.cb_sweep[n] is None):
+				if self.cb_sweep[n].isChecked():
+					continue
 
-		self.setWindowTitle("Setting inputs for {name}".format(name=setting.name))
+			if str(self.lbl_units[n].text()) == 'i':
+				if not(validate_int(self.inp_value[n].text())):
+					self.btn_accept.setEnabled(False)
+					return
 
+			if str(self.lbl_units[n].text()) == 'v':
+				if not(validate_float(self.inp_value[n].text())):
+					self.btn_accept.setEnabled(False)
+					return
+
+		self.btn_accept.setEnabled(True)
+	def update_value_inputs(self):
+		for n in range(len(self.cb_sweep)):
+			if not (self.cb_sweep[n] is None):
+				self.inp_value[n].setEnabled(not self.cb_sweep[n].isChecked())
+	def values(self):
+		return [str(self.inp_value[n].text()) for n in range(len(self.inp_value))]
+	def sweepSlot(self):
+		for n in range(len(self.cb_sweep)):
+			if self.cb_sweep[n] is None:continue
+			if self.cb_sweep[n].isChecked():return n
+		return None
+
+	@staticmethod
+	def getInputs(inputs,slot,parent=None):
+		dialog = InputDialogSwept(inputs,slot,parent)
+		result = dialog.exec_()
+		return [dialog.values(),dialog.sweepSlot(),result==gui.QDialog.Accepted]
+
+class InputDialogRecorded(gui.QDialog):
+	def __init__(self,inputs,parent=None):
+		super(InputDialogRecorded,self).__init__(parent)
+		self.setWindowTitle("Inputs for recorded setting")
+
+		n_inputs = len(inputs)
+
+		self.grid = gui.QGridLayout()
+		self.grid.setContentsMargins(0,0,0,0)
+		self.grid.setSpacing(0)
+
+		self.header_name  = gui.QLineEdit("name"  ,self); self.header_name.setReadOnly(True) ; self.grid.addWidget(self.header_name ,0,0)
+		self.header_units = gui.QLineEdit("units" ,self); self.header_units.setReadOnly(True); self.grid.addWidget(self.header_units,0,1)
+		self.header_value = gui.QLineEdit("value" ,self); self.header_value.setReadOnly(True); self.grid.addWidget(self.header_value,0,2)
+		self.header_name.setStyleSheet("QLineEdit { background-color: rgb(224,224,224) }")
+		self.header_units.setStyleSheet("QLineEdit { background-color: rgb(224,224,224) }")
+		self.header_value.setStyleSheet("QLineEdit { background-color: rgb(224,224,224) }")
+
+		self.lbl_name  = []
+		self.lbl_units = []
+		self.inp_value = []
+
+		for n in range(n_inputs):
+			lbl_name  = gui.QLineEdit(strn(inputs[n][0]),self); lbl_name.setReadOnly(True) ; self.grid.addWidget(lbl_name ,n+1,0); self.lbl_name.append(lbl_name)
+			lbl_units = gui.QLineEdit(strn(inputs[n][1]),self); lbl_units.setReadOnly(True); self.grid.addWidget(lbl_units,n+1,1); self.lbl_units.append(lbl_units)
+			inp_value = gui.QLineEdit(strn(inputs[n][2]),self);                              self.grid.addWidget(inp_value,n+1,2); self.inp_value.append(inp_value)
+			inp_value.textEdited.connect(self.validate)
+
+		self.btn_accept = gui.QPushButton("accept",self); self.btn_accept.clicked.connect(self.accept)
+		self.btn_cancel = gui.QPushButton("cancel",self); self.btn_cancel.clicked.connect(self.reject)
+		self.grid.addWidget(self.btn_accept,n+2,1)
+		self.grid.addWidget(self.btn_cancel,n+2,2)
+
+		self.setLayout(self.grid)
+		self.validate()
+	def validate(self):
+		for n in range(len(self.inp_value)):
+
+			if str(self.lbl_units[n].text()) == 'i':
+				if not(validate_int(self.inp_value[n].text())):
+					self.btn_accept.setEnabled(False)
+					return
+
+			if str(self.lbl_units[n].text()) == 'v':
+				if not(validate_float(self.inp_value[n].text())):
+					self.btn_accept.setEnabled(False)
+					return
+
+		self.btn_accept.setEnabled(True)
+	def values(self):
+		return [str(self.inp_value[n].text()) for n in range(len(self.inp_value))]
+
+	@staticmethod
+	def getInputs(inputs,parent=None):
+		dialog = InputDialogRecorded(inputs,parent)
+		result = dialog.exec_()
+		return [dialog.values(),result==gui.QDialog.Accepted]

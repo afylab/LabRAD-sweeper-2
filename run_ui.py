@@ -1,7 +1,7 @@
 import sys,labrad
 from PyQt4 import QtGui as gui, QtCore as core
 from qtdesigner import setup#,setup_axis_bar,setup_rec_bar,setup_swp_bar
-from qtdesigner.setup_widgets import AxisBar,SweptInputTable#,RecordedInputBar
+from qtdesigner.setup_widgets import AxisBar,InputDialogSwept,InputDialogRecorded
 from labrad_exclude import SERVERS,SETTINGS
 
 strn = lambda s:str(s) if s is not None else ""
@@ -21,6 +21,7 @@ class proto_swept_setting(object):
 		self.rad_setting    = -1 # 
 		self.rad_input_count = 0
 		self.rad_inputs      = [] # list of values for inputs. 
+		self.rad_input_units = []
 		self.rad_sweep_slot = None
 		self.rad_status     = None
 	def rad_reset(self):
@@ -43,6 +44,7 @@ class proto_recorded_setting(object):
 		self.rad_setting    = -1
 		self.rad_input_count = 0
 		self.rad_inputs     = [] # list of input values
+		self.rad_input_units = []
 		self.rad_status     = None
 	def rad_reset(self):
 		self.rad_input_count=0
@@ -239,6 +241,8 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.swp_inp_coeff_4.textEdited.connect(self.update_swept_setting_data)
 		self.swp_inp_coeff_5.textEdited.connect(self.update_swept_setting_data)
 
+		self.swp_btn_rad_set_inputs.clicked.connect(self.swp_rad_set_inputs)
+
 
 		# recorded settings
 		self.rec_btn_add.clicked.connect(self.add_recorded_setting)
@@ -269,9 +273,10 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.rec_cb_ignore_4.clicked.connect(self.update_recorded_setting_data)
 		self.rec_cb_ignore_5.clicked.connect(self.update_recorded_setting_data)
 
+		self.rec_btn_rad_set_inputs.clicked.connect(self.rec_rad_set_inputs)
+
 		self.vis_swp(False)
 		self.vis_rec(False)
-
 
 
 	# recorded settings functions
@@ -422,6 +427,7 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		print(accepts)
 
 		self.recorded_settings[n].rad_input_count = len(accepts)
+		self.recorded_settings[n].rad_input_units = [k for k in accepts]
 		self.recorded_settings[n].rad_inputs      = [None for k in range(len(accepts))]
 		
 		if '*' in accepts:
@@ -435,6 +441,19 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 
 		self.rec_lbl_rad_input_req.setText(strn(self.recorded_settings[n].rad_status))
 
+	def rec_rad_set_inputs(self):
+		n=self.rec_list_settings.currentRow()
+		if n == -1:return
+
+		if not (self.recorded_settings[n].rad_status in ['Inputs required','All inputs satisfied']):
+			return
+
+		inputs = [[None,self.recorded_settings[n].rad_input_units[k],self.recorded_settings[n].rad_inputs[k]] for k in range(self.recorded_settings[n].rad_input_count)]
+		inputs,success = InputDialogRecorded.getInputs(inputs,self)
+		if success:
+			self.recorded_settings[n].rad_inputs = inputs
+			self.recorded_settings[n].rad_status = 'All inputs satisfied'
+			self.rec_lbl_rad_input_req.setText('All inputs satisfied')
 
 
 	# swept setting functions
@@ -601,6 +620,7 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		print(accepts)
 
 		self.swept_settings[n].rad_input_count = len(accepts)
+		self.swept_settings[n].rad_input_units = [k for k in accepts]
 		self.swept_settings[n].rad_inputs      = [None for k in range(len(accepts))]
 
 		if '*' in accepts:
@@ -630,6 +650,24 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 				self.swept_settings[n].rad_sweep_slot=None
 
 		self.swp_lbl_rad_input_req.setText(strn(self.swept_settings[n].rad_status))
+
+	def swp_rad_set_inputs(self):
+		n = self.swp_list_settings.currentRow()
+		if n == -1:return
+
+		if not (self.swept_settings[n].rad_status in ['Inputs required','All inputs satisfied']):
+			return
+
+		# For now names are empty. Still have to figure out how to get the name of LabRAD setting inputs.
+		inputs = [[None,self.swept_settings[n].rad_input_units[k],self.swept_settings[n].rad_inputs[k]] for k in range(self.swept_settings[n].rad_input_count)]
+
+		inputs,sweepSlot,success = InputDialogSwept.getInputs(inputs,self.swept_settings[n].rad_sweep_slot,self)
+		if success:
+			self.swept_settings[n].rad_inputs     = inputs
+			self.swept_settings[n].rad_sweep_slot = sweepSlot
+			self.swept_settings[n].rad_status     = 'All inputs satisfied'
+			self.swp_lbl_rad_input_req.setText('All inputs satisfied')
+
 
 
 	# managing comments
@@ -742,7 +780,6 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 			self.sweep_checks['axis {n} incomplete'.format(n=n)] = False
 
 		self.check_sweep_status()
-
 	def check_dv(self):
 		"""Checks and updates issues related to DataVault"""
 		self.sweep_checks['no DataVault filename']           = False
@@ -767,11 +804,9 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 					self.sweep_checks['invalid DataVault file location'] = True
 
 		self.check_sweep_status()
-
 	def check_swept(self):
 		"""Checks and updates issues related to swept settings"""
 		self.check_sweep_status()
-
 	def check_recorded(self):
 		"""Checks and updates issues related to recorded settings"""
 		self.check_sweep_status()
