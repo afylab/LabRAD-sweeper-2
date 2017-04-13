@@ -1,12 +1,13 @@
 import numpy
 
 class Axis(object):
-	def __init__(self,start,end,points):
+	def __init__(self,start,end,points,delay):
 		if points < 2:raise ValueError("Axis points (number of positions) must be at least 2. An axis of length 1 has no variation.")
 		self.start  = start
 		self.end    = end
 		self.rng    = start-end
 		self.points = points
+		self.delay  = 0.0 if delay is None else delay
 
 		self.values = numpy.linspace(start, end     , points)
 		self.coords = numpy.linspace(0    , points-1, points).astype(int)
@@ -88,7 +89,13 @@ class SweepMesh(object):
 				if self.axis_positions == self.end_positions:
 					self.complete = True
 
-		return [list(self.axis_positions),numpy.array(tuple(self.m[tuple(self.axis_positions)]))]
+		next_axis_step=0
+		for n in range(self.n_axes):
+			if self.axis_positions[n] != self.end_positions[n]:
+				next_axis_step = n
+				break
+
+		return [list(self.axis_positions),numpy.array(tuple(self.m[tuple(self.axis_positions)])),next_axis_step]
 
 # examples
 if __name__ == '__main__':
