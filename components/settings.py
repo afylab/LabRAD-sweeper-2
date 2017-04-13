@@ -1,3 +1,10 @@
+import time
+
+builtins = {
+	'get':['time','zero'],
+	'set':['do nothing'],
+}
+
 class Setting(object):
 	def __init__(self,connection=None,max_ramp_speed=None,label=None):
 		self.connection     = connection
@@ -6,7 +13,7 @@ class Setting(object):
 			if max_ramp_speed <= 0:raise ValueError("max_ramp_speed cannot be zero (or less than zero)")
 
 		self.label   = label if label else None
-		self.kind    = None  # what kind of setting this is. 'vds' or 'dev'
+		self.kind    = None  # what kind of setting this is. 'vds' or 'dev' or 'builtin'
 		self.setting = None  # the setting object (instance of VDSSetting, DeviceGetSetting, or DeviceSetSetting.)
 		                     # These classes have common menthods called by the Setting class.
 
@@ -49,6 +56,10 @@ class Setting(object):
 				# label detection for 'dev' kind
 				if self.kind == 'dev':
 					self.label = self.setting.setting[2]
+
+				# label detection for 'builtin' kind
+				if self.kind == 'builtin':
+					self.label = self.setting.which
 
 			self.ready = True
 
@@ -99,6 +110,21 @@ class Setting(object):
 				self.label = self.setting.setting[2]
 			self.ready = True
 
+	def builtin(self,which):
+		"""Connects to a builtin setting"""
+		if self.has_setting:raise ValueError("Setting already defined")
+
+		self.setting = BuiltinSetting(which)
+
+		self.kind = 'builtin'
+		self.has_setting = True
+
+		if self.connected:
+			self.setting.connect(self.connection)
+			if self.label is None:
+				self.label = self.setting.which
+			self.ready = True
+
 
 
 
@@ -131,6 +157,46 @@ class VDSSetting(object):
 		if not self.connected: raise ValueError("Setting not yet connected to LabRAD")
 		if not self.has_set  : raise ValueError("Setting does not support set")
 		return self.connection.virtual_device_server.set_channel(value,self.ID,self.name)
+
+class BuiltinSetting(object):
+	def __init__(self,which):
+		if not (which in builtins['get'] + builtins['set']):
+			raise ValueError
+
+		self.which = which
+
+		if which in builtins['get']:
+			self.has_get = True
+			self.has_set = False
+
+		if which in builtins['set']:
+			self.has_get = False
+			self.has_set = True
+
+	def connect(self,connection):
+		"""No connection is needed for builtin settings. This may change, in which case the connection should be saved as an internal property."""
+		pass
+
+	def get(self):
+		if not self.has_get:
+			raise ValueError("Tried to perform 'get' on a 'set' type builtin")
+
+		if self.which == 'zero':
+			return 0.0
+
+		if self.which == 'time':
+			return time.time()
+
+		raise ValueError("ERR: could not identify builtin setting <{which}>".format(which=self.which))
+
+	def set(self,value):
+		if not self.has_set:
+			raise ValueError("Tried to perform 'set' on a 'get' type builtin")
+
+		if self.which == 'do nothing':
+			return
+
+		raise ValueError("ERR: could not identify builtin setting <{which}>".format(which=self.which))
 
 class DeviceGetSetting(object):
 	def __init__(self,setting,inputs):

@@ -37,7 +37,7 @@ class Sweeper(object):
 		if self._mode != 'setup':raise ValueError("This function is only available in setup mode")
 		self._axes.append(Axis(start,end,points))
 
-	def add_swept_setting(self, kind, label=None, max_ramp_speed=None, ID=None, name=None, setting=None, inputs=None, var_slot=None):
+	def add_swept_setting(self, kind, label=None, max_ramp_speed=None, ID=None, name=None, setting=None, inputs=None, var_slot=None, which_builtin=None):
 		"""
 		Adds a setting to be swept.
 		kind is either 'vds' for a Virtual Device Server setting,
@@ -66,6 +66,8 @@ class Sweeper(object):
 		if kind == 'vds':
 			if not ((setting is None) and (inputs is None) and (var_slot is None)):
 				print("Warning: specified at least one of setting,inputs,var_slot for a 'vds' type setting. These are properties for a 'dev' type setting, and will be ignored.")
+			if not (which_builtin is None):
+				print("Warning: specified which_builtin for a 'vds' type setting. This property is for 'builtin' type settings, and will be ignored.")
 			
 			s = Setting(self._cxn,max_ramp_speed=max_ramp_speed)
 			s.vds(ID,name)      # Since a connection has been passed, this will error if ID/name don't point to a valid channel.
@@ -80,15 +82,31 @@ class Sweeper(object):
 				raise ValueError("For a 'dev' type setting: setting, inputs, and var_slot must be specified.")
 			if not ((name is None) and (ID is None)):
 				print("Warning: specified name and/or ID for a 'dev' type setting. These are properties for the 'vds' type setting, and will be ignored.")
+			if not (which_builtin is None):
+				print("Warning: specified which_builtin for a 'dev' type setting. This property is for 'builtin' type settings, and will be ignored.")
 			
 			s = Setting(self._cxn,max_ramp_speed=max_ramp_speed,label=label)
 			s.dev_set(setting,inputs,var_slot)
 			self._swp.append(s)
 
-		else:
-			raise ValueError("'kind' must be 'vds' (for a Virtual Device Server setting) or 'dev' (for a LabRAD Device Server setting). Got {kind} instead.".format(kind=kind))
+		elif kind == 'builtin':
+			if which_builtin is None:
+				raise ValueError("For a 'builtin' type setting, which_builtin must be specified")
+			if not ((setting is None) and (inputs is None) and (var_slot is None)):
+				print("Warning: specified at least one of setting,inputs,var_slot for a 'builtin' type setting. These are properties for a 'dev' type setting, and will be ignored.")
+			if not ((name is None) and (ID is None)):
+				print("Warning: specified name and/or ID for a 'builtin' type setting. These are properties for the 'vds' type setting, and will be ignored.")
 
-	def add_recorded_setting(self, kind, label=None, ID=None, name=None, setting=None, inputs=None):
+			s = Setting(self._cxn,max_ramp_speed=max_ramp_speed,label=label)
+			s.builtin(which_builtin)
+			if s.setting.has_set is False:
+				raise ValueError("Cannot use builtin <{which_builtin}> as swept setting; it is a get-only builtin".format(which_builtin=which_builtin))
+			self._swp.append(s)
+
+		else:
+			raise ValueError("'kind' must be 'vds' (for a Virtual Device Server setting) or 'dev' (for a LabRAD Device Server setting) or 'builtin' (for a builtin setting). Got {kind} instead.".format(kind=kind))
+
+	def add_recorded_setting(self, kind, label=None, ID=None, name=None, setting=None, inputs=None, which_builtin=None):
 		"""
 		Adds a setting to be recorded.
 		kind is either 'vds' for a Virtual Device Server setting,
@@ -111,6 +129,8 @@ class Sweeper(object):
 		if kind == 'vds':
 			if not ((setting is None) and (inputs is None)):
 				print("Warning: specified at least one of setting,inptus for a 'vds' type setting. These are properties for a 'dev' type setting, and will be ignored.")
+			if not (which_builtin is None):
+				print("Warning: specified which_builtin for a 'vds' type setting. This property is for 'builtin' type settings, and will be ignored.")
 			
 			s = Setting(self._cxn)
 			s.vds(ID,name)      # Since a connection has been passed, this will error if ID/name don't point to a valid channel.
@@ -125,13 +145,30 @@ class Sweeper(object):
 				raise ValueError("For a 'dev' type setting: setting and inputs must be specified.")
 			if not ((name is None) and (ID is None)):
 				print("Warning: specified name and/or ID for a 'dev' type setting. These are properties for the 'vds' type setting, and will be ignored.")
-			
+			if not (which_builtin is None):
+				print("Warning: specified which_builtin for a 'dev' type setting. This property is for 'builtin' type settings, and will be ignored.")
+
 			s = Setting(self._cxn,label=label)
 			s.dev_get(setting,inputs)
 			self._rec.append(s)
 
+		elif kind == 'builtin':
+			if which_builtin is None:
+				raise ValueError("For a 'builtin' type setting, which_builtin must be specified")
+			if not ((setting is None) and (inputs is None)):
+				print("Warning: specified at least one of setting,inputs,var_slot for a 'builtin' type setting. These are properties for a 'dev' type setting, and will be ignored.")
+			if not ((name is None) and (ID is None)):
+				print("Warning: specified name and/or ID for a 'builtin' type setting. These are properties for the 'vds' type setting, and will be ignored.")
+
+			s = Setting(self._cxn,label=label)
+			s.builtin(which_builtin)
+			if s.setting.has_get is False:
+				raise ValueError("Cannot use builtin <{which_builtin}> as recorded setting; it is a set-only builtin".format(which_builtin=which_builtin))
+			self._rec.append(s)
+
+
 		else:
-			raise ValueError("'kind' must be 'vds' (for a Virtual Device Server setting) or 'dev' (for a LabRAD Device Server setting). Got {kind} instead.".format(kind=kind))
+			raise ValueError("'kind' must be 'vds' (for a Virtual Device Server setting) or 'dev' (for a LabRAD Device Server setting) or 'builtin' (for a builtin setting). Got {kind} instead.".format(kind=kind))
 
 	def clear_axes(self):
 		if self._mode != 'setup':raise ValueError("This function is only available in setup mode")
