@@ -3,6 +3,7 @@ from PyQt4 import QtGui as gui, QtCore as core
 from qtdesigner import setup#,setup_axis_bar,setup_rec_bar,setup_swp_bar
 from qtdesigner.setup_widgets import AxisBar,InputDialogSwept,InputDialogRecorded
 from labrad_exclude import SERVERS,SETTINGS
+from components.settings import builtins as BUILTINS
 
 strn = lambda s:str(s) if s is not None else ""
 
@@ -40,7 +41,9 @@ class proto_swept_setting(object):
 			except:
 				return False
 
-		if self.type == 'Builtin':return False # For now, builtins are not implemented
+		if self.type == 'Builtin':
+			if self.builtin_type == None:return False
+			return True
 		if self.type == 'VDS':
 			if [self.vds_id,self.vds_name] in self._cxn.virtual_device_server.list_channels():
 				return True
@@ -81,7 +84,9 @@ class proto_recorded_setting(object):
 		self.rad_status=None
 	def validate(self):
 		if self.label == "":return False
-		if self.type == 'Builtin':return False
+		if self.type == 'Builtin':
+			if self.builtin_type == None:return False
+			return True
 		if self.type == 'VDS':
 			if [self.vds_id,self.vds_name] in self._cxn.virtual_device_server.list_channels():
 				return True
@@ -144,12 +149,15 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.parameters = [] # list of parameters, [ [name,units,value], ... ]
 
 		self.type_index    = {"":-1,None:-1,"VDS":0,"LabRAD":1,"Builtin":2}
-		self.builtin_index = {"":-1,None:-1}
+		self.builtin_index = {"":-1,None:-1,"do nothing":0,"time":0,"zero":1}
 
 		self.labrad_connect() # connect to LabRAD, fetch servers/devices, etc
 		                      # creates self._cxn
 		self.refresh_lists() # creates self.servers, self.settings, self.vds_channels, self.vds_rec, self.vds_swp
 		                     # populates self.servers, self.settings with LabRAD data
+
+		for builtin in BUILTINS['get']:self.rec_dd_builtins.addItem(builtin)
+		for builtin in BUILTINS['set']:self.swp_dd_builtins.addItem(builtin)
 
 		self.rig() # hook UI to functionality
 
