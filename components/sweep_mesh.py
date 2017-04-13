@@ -17,8 +17,15 @@ class SweepMesh(object):
 		self.has_mesh = False
 		self.m        = numpy.array([])
 		self.complete = False
+		self.steps_done     = 0
 
 		self.first_pos = True
+
+	def total_steps(self):
+		p=1
+		for l in self.axis_lengths:
+			p*=l
+		return p-1
 
 	def from_array(self,array):
 		"""Takes mesh from an arbitrary array"""
@@ -95,6 +102,7 @@ class SweepMesh(object):
 				next_axis_step = n
 				break
 
+		self.steps_done += 1
 		return [list(self.axis_positions),numpy.array(tuple(self.m[tuple(self.axis_positions)])),next_axis_step]
 
 # examples

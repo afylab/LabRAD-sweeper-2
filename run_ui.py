@@ -1,9 +1,10 @@
 import sys,labrad
 from PyQt4 import QtGui as gui, QtCore as core
-from qtdesigner import setup#,setup_axis_bar,setup_rec_bar,setup_swp_bar
+from qtdesigner import setup,sweep_runner
 from qtdesigner.setup_widgets import AxisBar,InputDialogSwept,InputDialogRecorded
 from labrad_exclude import SERVERS,SETTINGS
 from components.settings import builtins as BUILTINS
+import sweeper
 
 strn = lambda s:str(s) if s is not None else ""
 
@@ -18,6 +19,7 @@ class proto_swept_setting(object):
 		self.vds_dd       = None
 		self.vds_name     = ""
 		self.vds_id       = ""
+		self.rad_strings  = [] # [server,device,setting] as strings
 		self.rad_server     = -1 # -1 = none selected
 		self.rad_device     = -1 #
 		self.rad_setting    = -1 # 
@@ -58,8 +60,6 @@ class proto_swept_setting(object):
 			if self.rad_status == 'No specification required':return True
 			if self.rad_status == 'All inputs satisfied':return True
 			return False
-
-
 class proto_recorded_setting(object):
 	"""Houses the data associated with a recorded setting that hasn't been added to a sweep yet"""
 	def __init__(self,n,_cxn):
@@ -71,6 +71,7 @@ class proto_recorded_setting(object):
 		self.vds_dd       = None
 		self.vds_name     = ""
 		self.vds_id       = ""
+		self.rad_strings  = [] # [server,device,setting] as strings
 		self.rad_server     = -1
 		self.rad_device     = -1
 		self.rad_setting    = -1
@@ -101,7 +102,6 @@ class proto_recorded_setting(object):
 			return False
 
 
-
 def validate_dv_filename(filename):
 	if any(char in filename for char in '\n\t\\/*"\'[]{}();:=|.,?%<>'):
 		return False
@@ -124,6 +124,52 @@ def get_is_recordable(setting):
 	if len(setting.returns) == 0:return False
 	if 'v' in setting.returns[0]:return True
 	return False
+
+class SweepWindow(gui.QMainWindow,sweep_runner.Ui_MainWindow):
+	def __init__(self,_sweep,paused,dv_filename,dv_location,parent=None):
+		super(SweepWindow,self).__init__(parent)
+		self.setupUi(self)
+
+		self.paused = paused
+		self.done   = False
+		self._sweep = _sweep
+
+		self.steps_complete = 0
+		self.steps_total    = self._sweep._mesh.total_steps()
+
+		self.lbl_dv_filename.setText(dv_filename)
+		self.lbl_dv_folder.setText(dv_location)
+
+		self.lbl_steps_complete.setText("0")
+		self.lbl_steps_total.setText(str(self._sweep._mesh.total_steps()))
+
+		self.btn_pause.clicked.connect(self.pause)
+		self.btn_unpause.clicked.connect(self.unpause)
+
+		self.bar_progress.setRange(0,self.steps_total)
+
+		self.timer = core.QTimer(self)
+		self.timer.setInterval(20) # 1/50 of a second, for now
+		self.timer.timeout.connect(self.timer_event)
+		self.timer.start()
+
+	def timer_event(self):
+		# assume 20 milliseconds passed
+		if self.done:return
+		if self.paused:return
+
+		self._sweep.advance(0.02)
+		if self._sweep._mode == 'done':
+			self.done = True
+
+		self.lbl_steps_complete.setText(str(self._sweep._mesh.steps_done))
+		self.bar_progress.setValue(self._sweep._mesh.steps_done)
+
+	def pause(self):
+		self.paused=True
+	def unpause(self):
+		self.paused=False
+
 
 
 class SetupWindow(gui.QMainWindow,setup.Ui_setup):
@@ -264,7 +310,7 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 
 
 		# sweep start
-		#self.status_btn_start.clicked.connect(...)
+		self.status_btn_start.clicked.connect(self.start_sweep)
 
 		# swept settings
 		self.swp_btn_add.clicked.connect(self.add_swept_setting)
@@ -332,6 +378,47 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.vis_swp(False)
 		self.vis_rec(False)
 
+	#
+	def start_sweep(self):
+		"""Initializes a sweeper object with user-provided details"""
+		s = sweeper.Sweeper()
+
+		for axis in self.axes:
+			start  = float(str(axis.inp_start.text()))
+			end    = float(str(axis.inp_stop.text()))
+			points = int(str(axis.inp_points.text()))
+			delay  = float(str(axis.inp_delay.text()))
+			label  = str(axis.inp_name.text())
+			s.add_axis(start,end,points,delay,label)
+
+		for swp in self.swept_settings:
+			if swp.type == 'VDS':
+				s.add_swept_setting('vds',swp.label,10.0,ID=swp.vds_id,name=swp.vds_name)
+			if swp.type == 'LabRAD':
+				inputs = list(swp.rad_inputs)
+				inputs.pop(swp.rad_sweep_slot)
+				s.add_swept_setting('dev',swp.label,10.0,setting=swp.rad_strings,inputs=inputs,var_slot=swp.rad_sweep_slot)
+			if swp.type == 'Builtin':
+				s.add_swept_setting('builtin',swp.label,10.0,which_builtin=swp.builtin_type)
+
+		for rec in self.recorded_settings:
+			if rec.type == 'VDS':
+				s.add_recorded_setting('vds',rec.label,ID=rec.vds_id,name=rec.vds_name)
+			if rec.type == 'LabRAD':
+				s.add_recorded_setting('dev',rec.label,setting=rec.rad_strings,inputs=rec.rad_inputs)
+			if rec.type == 'Builtin':
+				s.add_recorded_setting('builtin',rec.label,which_builtin=rec.builtin_type)
+
+		s.generate_mesh([ [float(k) for k in swp.coeff[:1+len(self.axes)]] for swp in self.swept_settings ])
+
+		s.add_comments([ [c[1],c[0]] for c in self.comments ])
+		s.add_parameters(self.parameters)
+
+		if not self.cb_no_log.isChecked():
+			s.initialize_dataset(str(self.dv_inp_filename.text()),str(self.dv_inp_location.text()))
+
+		self.active_sweep = SweepWindow(s,self.status_cb_start_paused.isChecked(),str(self.dv_inp_filename.text()),str(self.dv_inp_location.text()),self)
+		self.active_sweep.show()
 
 	# recorded settings functions
 	def add_recorded_setting(self):
@@ -419,6 +506,7 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.recorded_settings[n].vds_name     = str(self.rec_inp_vds_name.text())
 		self.recorded_settings[n].vds_id       = str(self.rec_inp_vds_id.text())
 		self.recorded_settings[n].vds_dd       = str(self.rec_dd_vds.currentText())
+		self.recorded_settings[n].rad_strings  = [str(self.rec_dd_rad_server.currentText()),str(self.rec_dd_rad_device.currentText()),str(self.rec_dd_rad_setting.currentText())]
 		self.recorded_settings[n].rad_server   = self.rec_dd_rad_server.currentIndex()
 		self.recorded_settings[n].rad_device   = self.rec_dd_rad_device.currentIndex()
 		self.recorded_settings[n].rad_setting  = self.rec_dd_rad_setting.currentIndex()
@@ -616,6 +704,7 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.swept_settings[n].vds_name     = str(self.swp_inp_vds_name.text())
 		self.swept_settings[n].vds_id       = str(self.swp_inp_vds_id.text())
 		self.swept_settings[n].vds_dd       = str(self.swp_dd_vds.currentText())
+		self.swept_settings[n].rad_strings  = [str(self.swp_dd_rad_server.currentText()),str(self.swp_dd_rad_device.currentText()),str(self.swp_dd_rad_setting.currentText())]
 		self.swept_settings[n].rad_server   = self.swp_dd_rad_server.currentIndex()
 		self.swept_settings[n].rad_device   = self.swp_dd_rad_device.currentIndex()
 		self.swept_settings[n].rad_setting  = self.swp_dd_rad_setting.currentIndex()

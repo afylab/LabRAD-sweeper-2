@@ -10,6 +10,7 @@ class Sweeper(object):
 		self._axes = []          # list of axes (just stored as their lengths.)
 		self._swp  = []          # list of settings (SettingObject instances) to be set each step
 		self._rec  = []          # list of settings (SettingObject instances) to be recorded each step
+		self._axes_labels = []   # list of axis labels
 
 		self._mode  = 'setup'    # Current mode/status of the Sweeper object.
 		                         # setup = currently setting up for the sweep. Not ready to set/take data.
@@ -33,9 +34,10 @@ class Sweeper(object):
 		return tuple(self._rec)
 
 	# setup mode functions
-	def add_axis(self,start,end,points,delay=None):
+	def add_axis(self,start,end,points,delay=None,label=None):
 		if self._mode != 'setup':raise ValueError("This function is only available in setup mode")
 		self._axes.append(Axis(start,end,points,delay))
+		self._axes_labels.append("" if label is None else label)
 
 	def add_swept_setting(self, kind, label=None, max_ramp_speed=None, ID=None, name=None, setting=None, inputs=None, var_slot=None, which_builtin=None):
 		"""
@@ -311,7 +313,7 @@ class Sweeper(object):
 			for n in range(len(self._swp)):
 				if self._swp[n].max_ramp_speed is not None:
 					self._duration = max([self._duration, abs(self._targ_state[n]-self._last_state[n])/self._swp[n].max_ramp_speed])
-			self._duration = max([self._duration,self.axes[next_axis_step].delay*0.001]) # Minimum delay set by axis delay (in milliseconds)
+			self._duration = max([self._duration,self._axes[next_axis_step].delay*0.001]) # Minimum delay set by axis delay (in milliseconds)
 
 	def advance(self,time_elapsed,output=False):
 		if self._mode != 'sweep': raise ValueError("This function is only usable in sweep mode")
