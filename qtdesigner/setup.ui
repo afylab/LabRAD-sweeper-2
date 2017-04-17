@@ -34,6 +34,9 @@
        </property>
        <item>
         <widget class="QLineEdit" name="axes_lbl_priority">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Priority of the axes.&lt;/p&gt;&lt;p&gt;The sweeper steps the axis with priority zero each each iteration.&lt;/p&gt;&lt;p&gt;If an axis overflows, it will reset to its starting value and step the next axis.&lt;/p&gt;&lt;p&gt;When the last axis finishes, the sweep will end.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="styleSheet">
           <string notr="true">QLineEdit { background-color: rgb(224,224,224) }</string>
          </property>
@@ -47,6 +50,9 @@
        </item>
        <item>
         <widget class="QLineEdit" name="axes_lbl_name">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Name of the axes axis, to be shown on graphs &amp;amp; figures.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="styleSheet">
           <string notr="true">QLineEdit { background-color: rgb(224,224,224) }</string>
          </property>
@@ -60,6 +66,9 @@
        </item>
        <item>
         <widget class="QLineEdit" name="axes_lbl_start">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Starting value of the axes.&lt;/p&gt;&lt;p&gt;As an axis is stepped, its value will progress from its start value to its stop value.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="styleSheet">
           <string notr="true">QLineEdit { background-color: rgb(224,224,224) }</string>
          </property>
@@ -86,6 +95,9 @@
        </item>
        <item>
         <widget class="QLineEdit" name="axes_lbl_points">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of points (including endpoints) for the axes.&lt;/p&gt;&lt;p&gt;The values of the axes will be evenly spaced from the start value to the stop value.&lt;/p&gt;&lt;p&gt;Each axis must have at least two points.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="styleSheet">
           <string notr="true">QLineEdit { background-color: rgb(224,224,224) }</string>
          </property>
@@ -99,6 +111,9 @@
        </item>
        <item>
         <widget class="QLineEdit" name="lineEdit">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Minimum delay (in milliseconds) between steps along an axis.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="styleSheet">
           <string notr="true">QLineEdit { background-color: rgb(224,224,224) }</string>
          </property>
@@ -149,6 +164,9 @@
        </property>
        <item>
         <widget class="QPushButton" name="axes_btn_add">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Add an axis to the sweep.&lt;/p&gt;&lt;p&gt;The maximum number of axes is 6.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="text">
           <string>Add Axis</string>
          </property>
@@ -521,14 +539,30 @@
           <number>0</number>
          </property>
          <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_12" stretch="1,6">
+          <layout class="QHBoxLayout" name="horizontalLayout_12" stretch="1,4,2">
            <property name="spacing">
             <number>0</number>
            </property>
            <item>
             <widget class="QLineEdit" name="swp_lbl_coeff">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;At any point in the sweep, the value of a swept setting is calculated as a linear combination of the value of each axis.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Value = Constant + (Value of axis 0) * (coefficient 0) + (Value of axis 1) *  (Coeffifient 1) + ...&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
              <property name="text">
               <string>Coefficients</string>
+             </property>
+             <property name="readOnly">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="swp_lbl_coeff_exp">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;At any point in the sweep, the value of a swept setting is calculated as a linear combination of the value of each axis.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Value = Constant + (Value of axis 0) * (coefficient 0) + (Value of axis 1) *  (Coeffifient 1) + ...&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+             <property name="text">
+              <string>Value of setting = constant + (Axis 0 value)*(c0) + (Axis 1 value)*(c1) + ...</string>
              </property>
              <property name="readOnly">
               <bool>true</bool>
@@ -617,7 +651,7 @@
                 <string notr="true">QLineEdit { background-color: rgb(224,224,224) }</string>
                </property>
                <property name="text">
-                <string>Axis 0</string>
+                <string>Axis 0 (c0)</string>
                </property>
                <property name="readOnly">
                 <bool>true</bool>
@@ -659,7 +693,7 @@
                 <string notr="true">QLineEdit { background-color: rgb(224,224,224) }</string>
                </property>
                <property name="text">
-                <string>Axis 1</string>
+                <string>Axis 1 (c1)</string>
                </property>
                <property name="readOnly">
                 <bool>true</bool>
@@ -701,7 +735,7 @@
                 <string notr="true">QLineEdit { background-color: rgb(224,224,224) }</string>
                </property>
                <property name="text">
-                <string>Axis 2</string>
+                <string>Axis 2 (c2)</string>
                </property>
                <property name="readOnly">
                 <bool>true</bool>
@@ -743,7 +777,7 @@
                 <string notr="true">QLineEdit { background-color: rgb(224,224,224) }</string>
                </property>
                <property name="text">
-                <string>Axis 3</string>
+                <string>Axis 3 (c3)</string>
                </property>
                <property name="readOnly">
                 <bool>true</bool>
@@ -785,7 +819,7 @@
                 <string notr="true">QLineEdit { background-color: rgb(224,224,224) }</string>
                </property>
                <property name="text">
-                <string>Axis 4</string>
+                <string>Axis 4 (c4)</string>
                </property>
                <property name="readOnly">
                 <bool>true</bool>
@@ -830,7 +864,7 @@
                 <string notr="true">QLineEdit { background-color: rgb(224,224,224) }</string>
                </property>
                <property name="text">
-                <string>Axis 5</string>
+                <string>Axis 5 (c5)</string>
                </property>
                <property name="readOnly">
                 <bool>true</bool>
@@ -1226,14 +1260,30 @@
           <number>0</number>
          </property>
          <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_25" stretch="1,6">
+          <layout class="QHBoxLayout" name="horizontalLayout_25" stretch="1,4,2">
            <property name="spacing">
             <number>0</number>
            </property>
            <item>
             <widget class="QLineEdit" name="rec_lbl_ignore">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;For any axis checked below, the setting will not be measured when that axis is stepped.&lt;/p&gt;&lt;p&gt;The last value measured will still be written to Data Vault.&lt;/p&gt;&lt;p&gt;If all of the axes are ignored, the setting will be recorded once at the beginning of the sweep, and written to Data Vault as a parameter rather than a dependent variable.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
              <property name="text">
               <string>Ignore Axes</string>
+             </property>
+             <property name="readOnly">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="rec_lbl_ignore_exp">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;For any axis checked below, the setting will not be measured when that axis is stepped.&lt;/p&gt;&lt;p&gt;The last value measured will still be written to Data Vault.&lt;/p&gt;&lt;p&gt;If all of the axes are ignored, the setting will be recorded once at the beginning of the sweep, and written to Data Vault as a parameter rather than a dependent variable.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+             <property name="text">
+              <string>This setting will not be measured when an axes checked below is stepped.</string>
              </property>
              <property name="readOnly">
               <bool>true</bool>
@@ -1317,6 +1367,9 @@
            </item>
            <item>
             <widget class="QPushButton" name="rec_btn_ignore_all">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If all of the axes are ignored, the setting will be recorded once at the beginning of the sweep, and written to Data Vault as a parameter rather than a dependent variable.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;This button will check any of the checkboxes to the left that are unchecked. If all of them are checked, it will instead uncheck all of them.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
              <property name="text">
               <string>Ignore All (setting written as parameter)</string>
              </property>

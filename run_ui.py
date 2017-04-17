@@ -515,13 +515,14 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		
 	def rec_ignore_all(self):
 		if self.rec_list_settings.currentRow() == -1:return
-		all_ignored = all([self.rec_cb_ignore_0.isChecked(),self.rec_cb_ignore_1.isChecked(),self.rec_cb_ignore_2.isChecked(),self.rec_cb_ignore_3.isChecked(),self.rec_cb_ignore_4.isChecked(),self.rec_cb_ignore_5.isChecked()])
+		all_ignored = all([self.rec_cb_ignore_0.isChecked(),self.rec_cb_ignore_1.isChecked(),self.rec_cb_ignore_2.isChecked(),self.rec_cb_ignore_3.isChecked(),self.rec_cb_ignore_4.isChecked(),self.rec_cb_ignore_5.isChecked()][:len(self.axes)])
 		self.rec_cb_ignore_0.setChecked(not all_ignored)
 		self.rec_cb_ignore_1.setChecked(not all_ignored)
 		self.rec_cb_ignore_2.setChecked(not all_ignored)
 		self.rec_cb_ignore_3.setChecked(not all_ignored)
 		self.rec_cb_ignore_4.setChecked(not all_ignored)
 		self.rec_cb_ignore_5.setChecked(not all_ignored)
+		self.update_recorded_setting_data()
 	def update_rec_rad_dds(self):
 		n = self.rec_list_settings.currentRow()
 		s = str(self.rec_dd_rad_server.currentText())
@@ -1021,6 +1022,7 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 			self.swp_lbl_coeff_3,self.swp_inp_coeff_3,
 			self.swp_lbl_coeff_4,self.swp_inp_coeff_4,
 			self.swp_lbl_coeff_5,self.swp_inp_coeff_5,
+			self.swp_lbl_coeff_exp
 			],vis)
 		self.vis_swp_builtin(vis)
 		self.vis_swp_labrad(vis)
@@ -1064,6 +1066,7 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 			self.rec_cb_ignore_0,self.rec_cb_ignore_1,self.rec_cb_ignore_2,
 			self.rec_cb_ignore_3,self.rec_cb_ignore_4,self.rec_cb_ignore_5,
 			self.rec_btn_ignore_all,
+			self.rec_lbl_ignore_exp,
 			],vis)
 		self.vis_rec_labrad(vis)
 		self.vis_rec_vds(vis)
