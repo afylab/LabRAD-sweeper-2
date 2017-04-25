@@ -66,7 +66,10 @@ class DataSet(object):
 				done=True
 				continue
 			comment = self.comments.pop()
-			self.dv.add_comment(comment[0],comment[1],context=self.ctx)
+			try:
+				self.dv.add_comment(comment[0],comment[1],context=self.ctx)
+			except:
+				pass
 
 	def add_parameters(self,parameters,write=False):
 		if not parameters:parameters=[]
@@ -87,14 +90,20 @@ class DataSet(object):
 				done=True
 				continue
 			param=self.parameters.pop()
-			self.dv.add_parameter(param[0],Value(param[2],param[1]),context=self.ctx)
+			try:
+				self.dv.add_parameter(param[0],Value(param[2],param[1]),context=self.ctx)
+			except:
+				pass
 
 	def add_data(self,data,write=False):
 		if not data:data=[]
+		data2=[]
 		for datum in data:
 			if type(datum) not in [list,tuple]: raise ValueError("Error: invalid type for data. Should be list or tuple of [independents,dependents]; got type {dtype}".format(dtype=type(datum)))
 			if len(datum) != self.vartotal:     raise ValueError("Error: got data of invalid length. Was {datalen}, should be {vartotal}".format(datalen=len(datum),vartotal=self.vartotal))
-		self.data+=data
+			datum = [(float(k/k.unit) if type(k) is Value else k) for k in datum]
+			data2.append(datum)
+		self.data+=data2
 		if write:self.write_data()
 
 	def write_data(self):

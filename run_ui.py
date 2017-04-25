@@ -158,7 +158,8 @@ class SweepWindow(gui.QMainWindow,sweep_runner.Ui_MainWindow):
 		if self.done:return
 		if self.paused:return
 
-		self._sweep.advance(0.02)
+		if self._sweep._mode == 'sweep':
+			self._sweep.advance(0.02)
 		if self._sweep._mode == 'done':
 			self.done = True
 

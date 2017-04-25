@@ -245,7 +245,7 @@ class Sweeper(object):
 		self._progress   = 0.0  # progress (0 -> 1) from last state to target state
 		self._duration   = 0.0  # duration of current step in seconds. Zero for first state.
 
-	def initalize_dataset(self,dataset_name,dataset_location):
+	def initialize_dataset(self,dataset_name,dataset_location):
 		"""Ininitializes the dataset & makes it ready to take data/comments/parameters. Name and location must both be specified at this time."""
 		if self._mode == 'setup': raise ValueError("This function is only usable after the sweep has been started. It can still be used after the sweep is complete.")
 		if self._ds_ready       : raise ValueError("Dataset has already been initialized")
@@ -267,7 +267,7 @@ class Sweeper(object):
 		self._dataset.write_comments()
 
 		if self._mode == 'done':
-			self._close()
+			self.close()
 
 	def add_comments(self,comments):
 		if self._mode != 'sweep':raise ValueError("This function is only usable in sweep mode")
@@ -386,7 +386,7 @@ class Sweeper(object):
 		if not (self._ds_ready):
 			print("Warning: although the sweep has been completed, the dataset has not been created yet (and so the data has not been recorded.) To create the dataset, use Sweeper.initalize_dataset(name,location) and the data will be written automatically.")
 		else:
-			self._close()
+			self.close()
 
 	def close(self):
 		print("Sweep and log completed, closing LabRAD Connections")
