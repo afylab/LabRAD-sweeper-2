@@ -34,9 +34,9 @@ class Sweeper(object):
 		return tuple(self._rec)
 
 	# setup mode functions
-	def add_axis(self,start,end,points,delay=None,label=None):
+	def add_axis(self,start,end,points,min_ramp_duration=None,post_ramp_delay=None,label=None):
 		if self._mode != 'setup':raise ValueError("This function is only available in setup mode")
-		self._axes.append(Axis(start,end,points,delay))
+		self._axes.append(Axis(start,end,points,min_ramp_duration,post_ramp_delay))
 		self._axes_labels.append("" if label is None else label)
 
 	def add_swept_setting(self, kind, label=None, max_ramp_speed=None, ID=None, name=None, setting=None, inputs=None, var_slot=None, which_builtin=None):
@@ -212,8 +212,8 @@ class Sweeper(object):
 		if self._mode != 'sweep':raise ValueError("This function is only usable in sweep mode")
 
 		# DataSet object (self._dataset) creation
-		axis_parameter = [ ["axis_details"       , '**i', [ [axis.start,axis.end,axis.points,axis.delay] for axis in self._axes     ]] ] # start value, end value, and number of points for each axis
-		comb_parameter = [ ["linear_combinations", '**v', [ [float(c) for c in comb]                     for comb in self._lincombs ]] ] # linear combinations for each swept setting
+		axis_parameter = [ ["axis_details"       , '**i', [ [axis.start,axis.end,axis.points,axis.min_ramp_duration,axis.post_ramp_delay] for axis in self._axes     ]] ] # start value, end value, and number of points for each axis
+		comb_parameter = [ ["linear_combinations", '**v', [ [float(c) for c in comb]                                                      for comb in self._lincombs ]] ] # linear combinations for each swept setting
 
 		comments = [
 			["Created by LabRAD-Sweeper-2","computer"],
@@ -313,7 +313,7 @@ class Sweeper(object):
 			for n in range(len(self._swp)):
 				if self._swp[n].max_ramp_speed is not None:
 					self._duration = max([self._duration, abs(self._targ_state[n]-self._last_state[n])/self._swp[n].max_ramp_speed])
-			self._duration = max([self._duration,self._axes[next_axis_step].delay*0.001]) # Minimum delay set by axis delay (in milliseconds)
+			self._duration = max([self._duration,self._axes[next_axis_step].min_ramp_duration*0.001]) # Minimum delay set by axis delay (in milliseconds)
 
 	def advance(self,time_elapsed,output=False):
 		if self._mode != 'sweep': raise ValueError("This function is only usable in sweep mode")

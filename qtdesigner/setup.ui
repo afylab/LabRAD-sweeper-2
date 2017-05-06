@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>954</width>
-    <height>764</height>
+    <width>1037</width>
+    <height>919</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,7 +19,7 @@
      <rect>
       <x>0</x>
       <y>0</y>
-      <width>671</width>
+      <width>741</width>
       <height>151</height>
      </rect>
     </property>
@@ -28,7 +28,7 @@
       <number>0</number>
      </property>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="1,2,2,2,2,2,6">
+      <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="2,2,2,2,2,6,6,12">
        <property name="spacing">
         <number>0</number>
        </property>
@@ -110,15 +110,32 @@
         </widget>
        </item>
        <item>
-        <widget class="QLineEdit" name="lineEdit">
+        <widget class="QLineEdit" name="axes_lbl_min_ramp_duration">
          <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Minimum delay (in milliseconds) between steps along an axis.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Minimum amount of time to spend ramping when stepping the axis.&lt;/p&gt;&lt;p&gt;The amount of time spent ramping is determined by the larger of the following values:&lt;/p&gt;&lt;p&gt;1) The minimum ramp duration of the axis being stepped&lt;/p&gt;&lt;p&gt;2) The minimum amount of time set by the ramp rate limits of the settings being swept&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="styleSheet">
           <string notr="true">QLineEdit { background-color: rgb(224,224,224) }</string>
          </property>
          <property name="text">
-          <string>Delay (ms)</string>
+          <string>Min ramp duration (ms)</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="axes_lbl_post_ramp_delay">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Amount of time to wait (with swept settings unchanging) between the completion of a ramp and taking the masurement associated with that ramp.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">QLineEdit { background-color: rgb(224,224,224) }
+</string>
+         </property>
+         <property name="text">
+          <string>Post-ramp delay (ms)</string>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -194,8 +211,8 @@
      <rect>
       <x>0</x>
       <y>170</y>
-      <width>951</width>
-      <height>181</height>
+      <width>981</width>
+      <height>201</height>
      </rect>
     </property>
     <layout class="QHBoxLayout" name="horizontalLayout_15" stretch="1,3">
@@ -289,6 +306,26 @@
                 </property>
                </item>
               </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_6">
+             <property name="spacing">
+              <number>0</number>
+             </property>
+             <item>
+              <widget class="QLineEdit" name="swp_lbl_max_ramp_rate">
+               <property name="text">
+                <string>Max ramp rate</string>
+               </property>
+               <property name="readOnly">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="swp_inp_max_ramp_rate"/>
              </item>
             </layout>
            </item>
@@ -914,8 +951,8 @@
     <property name="geometry">
      <rect>
       <x>0</x>
-      <y>370</y>
-      <width>951</width>
+      <y>390</y>
+      <width>981</width>
       <height>161</height>
      </rect>
     </property>
@@ -1389,9 +1426,9 @@
    <widget class="QWidget" name="verticalLayoutWidget_19">
     <property name="geometry">
      <rect>
-      <x>680</x>
+      <x>750</x>
       <y>0</y>
-      <width>273</width>
+      <width>231</width>
       <height>151</height>
      </rect>
     </property>
@@ -1506,7 +1543,7 @@
     <property name="geometry">
      <rect>
       <x>0</x>
-      <y>550</y>
+      <y>570</y>
       <width>571</width>
       <height>193</height>
      </rect>
@@ -1608,8 +1645,8 @@
     <property name="geometry">
      <rect>
       <x>590</x>
-      <y>550</y>
-      <width>361</width>
+      <y>570</y>
+      <width>391</width>
       <height>191</height>
      </rect>
     </property>

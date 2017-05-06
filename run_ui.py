@@ -386,12 +386,13 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		s = sweeper.Sweeper()
 
 		for axis in self.axes:
-			start  = float(str(axis.inp_start.text()))
-			end    = float(str(axis.inp_stop.text()))
-			points = int(str(axis.inp_points.text()))
-			delay  = float(str(axis.inp_delay.text()))
-			label  = str(axis.inp_name.text())
-			s.add_axis(start,end,points,delay,label)
+			start     = float(str(axis.inp_start.text()))
+			end       = float(str(axis.inp_stop.text()))
+			points    = int(str(axis.inp_points.text()))
+			min_ramp  = float(str(axis.inp_min_ramp_duration.text()))
+			post_ramp = float(str(axis.inp_post_ramp_delay.text()))
+			label     = str(axis.inp_name.text())
+			s.add_axis(start,end,points,min_ramp,post_ramp,label)
 
 		for swp in self.swept_settings:
 			if swp.type == 'VDS':
@@ -902,12 +903,13 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		"""Checks and updates issues related to axes"""
 		self.sweep_checks['no axes'] = len(self.axes) == 0
 		for n in range(len(self.axes)):
-			start  = str(self.axes[n].inp_start.text())
-			stop   = str(self.axes[n].inp_stop.text())
-			points = str(self.axes[n].inp_points.text())
-			delay  = str(self.axes[n].inp_delay.text())
-			name   = str(self.axes[n].inp_name.text())
-			self.sweep_checks['axis {n} incomplete'.format(n=n)] = any(i == '' for i in [start,stop,points,delay,name])
+			start     = str(self.axes[n].inp_start.text())
+			stop      = str(self.axes[n].inp_stop.text())
+			points    = str(self.axes[n].inp_points.text())
+			min_ramp  = str(self.axes[n].inp_min_ramp_duration.text())
+			post_ramp = str(self.axes[n].inp_post_ramp_delay.text())
+			name      = str(self.axes[n].inp_name.text())
+			self.sweep_checks['axis {n} incomplete'.format(n=n)] = any(i == '' for i in [start,stop,points,min_ramp,post_ramp,name])
 			invalid = False
 			try:
 				start = float(start)
@@ -918,10 +920,15 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 			except:
 				if stop != '':invalid = True
 			try:
-				delay = float(delay)
-				if delay < 0:invalid = True
+				min_ramp = float(min_ramp)
+				if min_ramp < 0:invalid = True
 			except:
-				if delay != '':invalid = True
+				if min_ramp != '':invalid = True
+			try:
+				post_ramp = float(post_ramp)
+				if post_ramp < 0:invalid = True
+			except:
+				if post_ramp != '':invalid = True
 			try:
 				points = int(points)
 				if points < 2:invalid = True
