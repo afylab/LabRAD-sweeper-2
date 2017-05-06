@@ -212,8 +212,8 @@ class Sweeper(object):
 		if self._mode != 'sweep':raise ValueError("This function is only usable in sweep mode")
 
 		# DataSet object (self._dataset) creation
-		axis_parameter = [ ["axis_details"       , '**i', [ [axis.start,axis.end,axis.points] for axis in self._axes     ]] ] # start value, end value, and number of points for each axis
-		comb_parameter = [ ["linear_combinations", '**v', [ [float(c) for c in comb]          for comb in self._lincombs ]] ] # linear combinations for each swept setting
+		axis_parameter = [ ["axis_details"       , '**i', [ [axis.start,axis.end,axis.points,axis.delay] for axis in self._axes     ]] ] # start value, end value, and number of points for each axis
+		comb_parameter = [ ["linear_combinations", '**v', [ [float(c) for c in comb]                     for comb in self._lincombs ]] ] # linear combinations for each swept setting
 
 		comments = [
 			["Created by LabRAD-Sweeper-2","computer"],

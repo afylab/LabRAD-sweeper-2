@@ -69,7 +69,8 @@ class DataSet(object):
 			try:
 				self.dv.add_comment(comment[0],comment[1],context=self.ctx)
 			except:
-				pass
+				print("Error writing comment with author '{auth}' and content '{cont}'".format(aut = comment[0], cont = comment[1]))
+				print("This could be acused by invalid author or content, or by an issue with the installation of LabRAD or Data Vault")
 
 	def add_parameters(self,parameters,write=False):
 		if not parameters:parameters=[]
@@ -93,7 +94,8 @@ class DataSet(object):
 			try:
 				self.dv.add_parameter(param[0],Value(param[2],param[1]),context=self.ctx)
 			except:
-				pass
+				print("Error writing parameter with name '{name}', units '{units}', and value '{value}'".format(name=param[0],units=param[1],value=param[2]))
+				print("This could be cause by invalid name, units, or value, or by an issue with the installaiton of LabRAD or Data Vault")
 
 	def add_data(self,data,write=False):
 		if not data:data=[]
