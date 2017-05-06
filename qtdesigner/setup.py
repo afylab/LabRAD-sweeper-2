@@ -25,7 +25,7 @@ except AttributeError:
 class Ui_setup(object):
     def setupUi(self, setup):
         setup.setObjectName(_fromUtf8("setup"))
-        setup.resize(1037, 919)
+        setup.resize(983, 782)
         self.centralwidget = QtGui.QWidget(setup)
         self.centralwidget.setObjectName(_fromUtf8("centralwidget"))
         self.verticalLayoutWidget_2 = QtGui.QWidget(self.centralwidget)
