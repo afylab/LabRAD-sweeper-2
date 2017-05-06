@@ -83,22 +83,23 @@ class proto_recorded_setting(object):
 		self.rad_input_count=0
 		self.rad_inputs=[]
 		self.rad_status=None
-	def validate(self):
+	def validate(self,n_axes):
 		if self.label == "":return False
+		status = 'parameter' if all(self.ignore[:n_axes]) else 'setting'
 		if self.type == 'Builtin':
-			if self.builtin_type == None:return False
-			return True
+			if len(strn(self.builtin_type)) == 0:return False
+			return status
 		if self.type == 'VDS':
 			if [self.vds_id,self.vds_name] in self._cxn.virtual_device_server.list_channels():
-				return True
+				return status
 			else:
 				return False
 		if self.type == 'LabRAD':
 			if self.rad_server  == -1:return False
 			if self.rad_device  == -1:return False
 			if self.rad_setting == -1:return False
-			if self.rad_status == 'No specification required':return True
-			if self.rad_status == 'All inputs satisfied':return True
+			if self.rad_status == 'No specification required':return status
+			if self.rad_status == 'All inputs satisfied':return status
 			return False
 
 
@@ -182,8 +183,8 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		# Issues (potential reasons why a sweep cannot be started) for each category
 		issues_axes     = ['no axes'] + ['axis {n} invalid'.format(n=n) for n in range(6)] + ['axis {n} incomplete'.format(n=n) for n in range(6)]
 		issues_dv       = ['no DataVault filename','no DataVault file location','invalid DataVault filename','invalid DataVault file location']
-		issues_swept    = ['no swept settings'   ,'incomplete or invalid swept setting']
-		issues_recorded = ['no recorded settings','incomplete or invalid swept setting']
+		issues_swept    = ['no swept settings'   ,'invalid or incomplete swept setting']
+		issues_recorded = ['no recorded settings','invalid or incomplete recorded setting']
 
 		self.issue_names = issues_axes + issues_dv + issues_swept + issues_recorded # list of all issue names
 		self.sweep_checks = {issue:False for issue in self.issue_names}             # dict describing whether or not each individual issues is in effect
@@ -969,10 +970,15 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		"""Checks and updates issues related to recorded settings"""
 		self.sweep_checks['no recoreded settings'] = len(self.recorded_settings) == 0
 		self.sweep_checks['invalid or incomplete recorded setting'] = False
+		self.sweep_checks['all recorded settings are parameters'] = False
+		statuses = []
 		for setting in self.recorded_settings:
-			if setting.validate() == False:
+			status = setting.validate(len(self.axes))
+			if status == False:
 				self.sweep_checks['invalid or incomplete recorded setting'] = True
 				break
+			statuses.append(status)
+		self.sweep_checks['all recorded settings are parameters'] = all([status == 'parameter' for status in statuses]) if ((len(statuses) == len(self.recorded_settings)) and len(statuses) != 0) else False
 		self.check_sweep_status()
 
 
