@@ -201,7 +201,7 @@ class Sweeper(object):
 				raise ValueError("Length of a linear combination must be (1 + number_of_axes); one constant term plus a coefficient for each axis. Expected length: {len1}, got length {len2} from linear combination {comb}".format(len1=len(self._axes)+1,len2=len(comb),comb=comb))
 			comb = [float(c) for c in comb] # ensure that values in each combination are valid as floats
 
-		self._mesh.generate(self._axes,lincombs)
+		self._mesh.from_linear_functions(self._axes,lincombs)
 		self._lincombs = lincombs
 		self._mode = 'sweep'
 		self._configure_sweep()

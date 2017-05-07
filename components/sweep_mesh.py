@@ -55,7 +55,7 @@ class SweepMesh(object):
 		self.end_positions  = [length - 1 for length in self.axis_lengths]
 		self.has_mesh       = True
 
-	def generate(self,axes,lincombs):
+	def from_linear_functions(self,axes,lincombs):
 		"""mesh[x,y,z,...][n] = lincombs[n][0] + x*lincombs[n][1] + y*lincombs[n][2] + ..."""
 		if self.has_mesh:raise ValueError("Mesh already generated/loaded")
 		n_combs      = len(lincombs)
@@ -97,14 +97,8 @@ class SweepMesh(object):
 				if self.axis_positions == self.end_positions:
 					self.complete = True
 
-		#next_axis_step=0
-		#for n in range(self.n_axes):
-		#	if self.axis_positions[n] != self.end_positions[n]:
-		#		next_axis_step = n
-		#		break
-
 		self.steps_done += 1
-		return [list(self.axis_positions),numpy.array(tuple(self.m[tuple(self.axis_positions)])),axis] #next_axis_step]
+		return [list(self.axis_positions),numpy.array(tuple(self.m[tuple(self.axis_positions)])),axis]
 
 # examples
 if __name__ == '__main__':
@@ -122,7 +116,7 @@ if __name__ == '__main__':
 	g = SweepMesh()
 	a1 = Axis(0,3,3)
 	a2 = Axis(0,8,2)
-	g.generate([a1,a2],[ [1,0,0],[0,0,1],[0,1,0],[0,1,1] ])
+	g.from_linear_functions([a1,a2],[ [1,0,0],[0,0,1],[0,1,0],[0,1,1] ])
 	for inst in range(6):print(g.next())
 	print("")
 
