@@ -1,7 +1,7 @@
 import numpy
 
 class Axis(object):
-	def __init__(self,start,end,points,min_ramp_duration,post_ramp_delay):
+	def __init__(self,start,end,points,min_ramp_duration=None,post_ramp_delay=None):
 		if points < 2:raise ValueError("Axis points (number of positions) must be at least 2. An axis of length 1 has no variation.")
 		self.start  = start
 		self.end    = end
@@ -73,14 +73,14 @@ class SweepMesh(object):
 		self.has_mesh       = True
 
 	def next(self):
-		"""Advances the position(s), then returns [(positions),(values)]"""
+		"""Advances the position(s), then returns [(positions),(values),axis being stepped]. First call returns the origin of the mesh."""
 		if not self.has_mesh: raise ValueError("mesh has not been generated yet")
 		if self.complete    : raise ValueError("SweepMesh object has finished iterating")
 
 		if self.first_pos:
 			# We want the first next() call to return the values at (0,0,0,...) so we don't advance on the first call.
 			self.first_pos = False
-			return [list(self.axis_positions),numpy.array(tuple(self.m[tuple(self.axis_positions)]))]
+			return [list(self.axis_positions),numpy.array(tuple(self.m[tuple(self.axis_positions)])),-1]
 
 		axis = 0
 		done = False
