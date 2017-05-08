@@ -267,9 +267,6 @@ class Sweeper(object):
 			self._delay_progress = 0.0
 			self._set_state(self._targ_state)
 
-		#self._last_state = None # the state (list of swept setting values) that the last measurement was taken at. For the first measurement it's None.
-		#self._progress   = 0.0  # progress (0 -> 1) from last state to target state
-		#self._duration   = 0.0  # duration of current step in seconds. Zero for first state.
 
 	def initialize_dataset(self,dataset_name,dataset_location):
 		"""Ininitializes the dataset & makes it ready to take data/comments/parameters. Name and location must both be specified at this time."""
@@ -377,16 +374,13 @@ class Sweeper(object):
 			if self._ramp_cycle == 'delay':
 				self._delay_progress += time_elapsed / self._delay_duration if self._delay_duration else 1.0
 				if self._delay_progress >= 1.0:
-					print('doing measurement')
 					self._do_measurement()
-					print('')
 
 			elif self._ramp_cycle == 'ramp':
 				self._ramp_progress += time_elapsed / self._ramp_duration if self._ramp_duration else 1.0
 				self._ramp_progress = min([self._ramp_progress,1.0])
 				self._set_state(self._targ_state*self._ramp_progress + self._last_state*(1-self._ramp_progress))
 				if self._ramp_progress >= 1.0:
-					print('ramp done, starting delay')
 					self._ramp_cycle = 'delay'
 					self._delay_progress = 0.0
 
