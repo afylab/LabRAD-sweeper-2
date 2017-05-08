@@ -182,7 +182,7 @@ class Sweeper(object):
 		if self._mode != 'setup':raise ValueError("This function is only available in setup mode")
 		self._rec=[]
 
-	def generate_mesh(self,lincombs):
+	def generate_mesh(self,lincombs,do_pre_sweep=False,do_post_sweep=False,start_rampfrom=None,end_rampto=None):
 		"""
 		Generates the mesh from linear combinations of the axes.
 		One linear combination is required for each swept setting,
@@ -204,6 +204,12 @@ class Sweeper(object):
 		self._mesh.from_linear_functions(self._axes,lincombs)
 		self._lincombs = lincombs
 		self._mode = 'sweep'
+
+		self._do_pre_sweep   = do_pre_sweep
+		self._do_post_sweep  = do_post_sweep
+		self._start_rampfrom = start_rampfrom
+		self._end_rampto     = end_rampto
+
 		self._configure_sweep()
 
 	# sweep mode functions
@@ -237,13 +243,33 @@ class Sweeper(object):
 		self._ds_ready   = False # whether or not the dataset has been initialized (and is ready to be written to)
 		self._speedlimit = any([setting.max_ramp_speed is not None for setting in self._swp]) # whether or not any setting has a speed limitation
 		
-		self._axes_loc, self._targ_state = self._mesh.next()
+		self._axes_loc, self._targ_state, axis = self._mesh.next()
 		# _axes_loc   : set of integer positions along each axis
 		# _targ_state : the state (list of swept setting values) that the next measurement will be taken.
 
-		self._last_state = None # the state (list of swept setting values) that the last measurement was taken at. For the first measurement it's None.
-		self._progress   = 0.0  # progress (0 -> 1) from last state to target state
-		self._duration   = 0.0  # duration of current step in seconds. Zero for first state.
+		if self._do_pre_sweep:
+			self._sweep_phase = 'pre_sweep'
+			self._pre_sweep_progress = 0.0
+			self._pre_sweep_duration = 0.0
+
+			for n in range(len(self._swp)):
+				if self._swp[n].max_ramp_speed is not None:
+					self._pre_sweep_duration = max([self._pre_sweep_duration, abs(self._targ_state[n]-self._start_rampfrom[n])/self._swp[n].max_ramp_speed])
+			
+			if self._pre_sweep_duration == 0.0:
+				self._do_pre_sweep = False
+				#If the pre-sweep isn't constrained by ramp rates, it can be done in one step. This is best achieved by simply not doing a pre-sweep.
+
+		if not (self._do_pre_sweep):
+			self._sweep_phase = 'sweep'
+			self._ramp_cycle = 'delay' # start in the delay cycle so that the first measurement is preceeded by an interval with unchanging settings
+			self._delay_duration = self._axes[0].post_ramp_delay*0.001 if self._axes[0].post_ramp_delay else 0.0
+			self._delay_progress = 0.0
+			self._set_state(self._targ_state)
+
+		#self._last_state = None # the state (list of swept setting values) that the last measurement was taken at. For the first measurement it's None.
+		#self._progress   = 0.0  # progress (0 -> 1) from last state to target state
+		#self._duration   = 0.0  # duration of current step in seconds. Zero for first state.
 
 	def initialize_dataset(self,dataset_name,dataset_location):
 		"""Ininitializes the dataset & makes it ready to take data/comments/parameters. Name and location must both be specified at this time."""
@@ -294,7 +320,6 @@ class Sweeper(object):
 		"""Takes a measurement and advances the mesh. This should not be called except by the Sweeper class itself."""
 		if self._mode != 'sweep':raise ValueError("This function is only usable in sweep mode")
 
-		self._set_state(self._targ_state)
 		if output:print("measurement at {_targ_state}".format(_targ_state=self._targ_state))
 		measurements = [setting.get() for setting in self._rec]
 		self._dataset.add_data([ self._axes_loc + list(self._targ_state) + measurements ],self._ds_ready)
@@ -303,36 +328,74 @@ class Sweeper(object):
 		if not self._mesh.complete:
 			self._axes_loc, self._targ_state, next_axis_step = self._mesh.next()
 		else:
-			self._terminate_sweep()
+			if self._do_post_sweep:
+				self._sweep_phase = 'post_sweep'
+				self._post_sweep_progress = 0.0
+				self._post_sweep_duration = 0.0
+				for n in range(len(self._swp)):
+					if self._swep[n].max_ramp_speed is not None:
+						self._post_sweep_duration = max([self._post_sweep_duration, abs(self._end_rampto[n]-self._targ_state[n])/self._swp[n].max_ramp_speed])
+
+
+			else:
+				self._terminate_sweep()
+
 			return
 
 		# reset _progress, calculate new _duration
 		if self._speedlimit:
-			self._progress = 0.0
-			self._duration = 0.0
+			self._ramp_progress = 0.0
+			self._delay_progress = 0.0
+
+			self._ramp_cycle = 'ramp'
+			self._ramp_duration = 0.0
 			for n in range(len(self._swp)):
 				if self._swp[n].max_ramp_speed is not None:
-					self._duration = max([self._duration, abs(self._targ_state[n]-self._last_state[n])/self._swp[n].max_ramp_speed])
-			self._duration = max([self._duration,self._axes[next_axis_step].min_ramp_duration*0.001]) # Minimum delay set by axis delay (in milliseconds)
+					self._ramp_duration = max([self._ramp_duration, abs(self._targ_state[n]-self._last_state[n])/self._swp[n].max_ramp_speed])
+			self._ramp_duration = max([self._ramp_duration,self._axes[next_axis_step].min_ramp_duration*0.001]) # Minimum delay set by axis delay (in milliseconds)
+
+			self._delay_duration = self._axes[next_axis_step].post_ramp_delay * 0.001
 
 	def advance(self,time_elapsed,output=False):
 		if self._mode != 'sweep': raise ValueError("This function is only usable in sweep mode")
 		if not self._speedlimit : raise ValueError("Cannot advance by time elapsed without speed limit (no swept setting has a speed limit enforced.) To advance the sweep, please use Sweeper.step()")
 		if time_elapsed <= 0    : raise ValueError("time_elapsed must be greater than zero")
 
-		if not (self._duration > 0):
-			# this represents one incidentally instant step inside a sweep with a speed limit in general
-			self._do_measurement(output)
+		if self._sweep_phase == 'pre_sweep':
+			self._pre_sweep_progress += time_elapsed / self._pre_sweep_duration
+			self._pre_sweep_progress = min([self._pre_sweep_progress,1.0])
+			self._set_state(self._targ_state*self._pre_sweep_progress + self._start_rampfrom*(1-self._pre_sweep_progress))
 
-		else:
-			self._progress += time_elapsed / self._duration
+			if self._pre_sweep_progress >= 1.0:
+				self._sweep_phase = 'sweep'
+				self._ramp_cycle = 'delay' # start in the delay cycle so that the first measurement is preceeded by an interval with unchanging settings
+				self._delay_duration = self._axes[0].post_ramp_delay if self._axes[0].post_ramp_delay else 0.0
+				self._delay_progress = 0.0
 
-			# if we've reached (or overtaken) the next step
-			if self._progress >= 1.0:
-				self._do_measurement(output) # sets state to target, performs measurement, advances mesh, sets appropriate duration / etc
+		elif self._sweep_phase == 'sweep':
 
-			else:
-				self._set_state(self._targ_state*self._progress + self._last_state*(1-self._progress))
+			if self._ramp_cycle == 'delay':
+				self._delay_progress += time_elapsed / self._delay_duration if self._delay_duration else 1.0
+				if self._delay_progress >= 1.0:
+					print('doing measurement')
+					self._do_measurement()
+					print('')
+
+			elif self._ramp_cycle == 'ramp':
+				self._ramp_progress += time_elapsed / self._ramp_duration if self._ramp_duration else 1.0
+				self._ramp_progress = min([self._ramp_progress,1.0])
+				self._set_state(self._targ_state*self._ramp_progress + self._last_state*(1-self._ramp_progress))
+				if self._ramp_progress >= 1.0:
+					print('ramp done, starting delay')
+					self._ramp_cycle = 'delay'
+					self._delay_progress = 0.0
+
+		elif self._sweep_phase == 'post_sweep':
+			self._post_sweep_progress += time_elapsed / self._post_sweep_duration if self._post_sweep_duration else 1.0
+			self._post_sweep_progress = min([self._post_sweep_progress,1.0])
+			self._set_state(self._end_rampto*self._post_sweep_progress + self._targ_state*(1-self._post_sweep_progress))
+			if self._post_sweep_progress >= 1.0:
+				self._terminate_sweep()
 
 
 	def step(self,stepsize=0.1):

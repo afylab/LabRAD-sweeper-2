@@ -44,7 +44,7 @@ class proto_swept_setting(object):
 				return False
 
 		if self.type == 'Builtin':
-			if self.builtin_type == None:return False
+			if len(strn(self.builtin_type)) == 0:return False
 			return True
 		if self.type == 'VDS':
 			if [self.vds_id,self.vds_name] in self._cxn.virtual_device_server.list_channels():
