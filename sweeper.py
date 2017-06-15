@@ -39,7 +39,7 @@ class Sweeper(object):
 		self._axes.append(Axis(start,end,points,min_ramp_duration,post_ramp_delay))
 		self._axes_labels.append("" if label is None else label)
 
-	def add_swept_setting(self, kind, label=None, max_ramp_speed=None, ID=None, name=None, setting=None, inputs=None, var_slot=None, which_builtin=None):
+	def add_swept_setting(self, kind, label=None, max_step_size=None, ID=None, name=None, setting=None, inputs=None, var_slot=None, which_builtin=None):
 		"""
 		Adds a setting to be swept.
 		kind is either 'vds' for a Virtual Device Server setting,
@@ -58,9 +58,9 @@ class Sweeper(object):
 		label specified in the registry for 'vds' settings. For 'vds' settings, if no label is specified
 		in the registry, the label MUST be specified here.
 
-		'max_ramp_speed' is the maximum speed (in input value / second) at which the setting will be changed.
+		'max_step_size' is the maximum interval over which the setting will be changed in one step.
 		This will limit the speed at which the sweep will take place. If it is set to None, there will be no
-		limit enforced for this setting; if all swept settings have None for max_ramp_speed, there will be no
+		limit enforced for this setting; if all swept settings have None for max_step_size, there will be no
 		limit enforced at all.
 		"""
 		if self._mode != 'setup':raise ValueError("This function is only available in setup mode")
@@ -71,7 +71,7 @@ class Sweeper(object):
 			if not (which_builtin is None):
 				print("Warning: specified which_builtin for a 'vds' type setting. This property is for 'builtin' type settings, and will be ignored.")
 			
-			s = Setting(self._cxn,max_ramp_speed=max_ramp_speed)
+			s = Setting(self._cxn,max_step_size=max_step_size)
 			s.vds(ID,name)      # Since a connection has been passed, this will error if ID/name don't point to a valid channel.
 			                    # So, no need to check for that here.
 			
@@ -87,7 +87,7 @@ class Sweeper(object):
 			if not (which_builtin is None):
 				print("Warning: specified which_builtin for a 'dev' type setting. This property is for 'builtin' type settings, and will be ignored.")
 			
-			s = Setting(self._cxn,max_ramp_speed=max_ramp_speed,label=label)
+			s = Setting(self._cxn,max_step_size=max_step_size,label=label)
 			s.dev_set(setting,inputs,var_slot)
 			self._swp.append(s)
 
@@ -99,7 +99,7 @@ class Sweeper(object):
 			if not ((name is None) and (ID is None)):
 				print("Warning: specified name and/or ID for a 'builtin' type setting. These are properties for the 'vds' type setting, and will be ignored.")
 
-			s = Setting(self._cxn,max_ramp_speed=max_ramp_speed,label=label)
+			s = Setting(self._cxn,max_step_size=max_step_size,label=label)
 			s.builtin(which_builtin)
 			if s.setting.has_set is False:
 				raise ValueError("Cannot use builtin <{which_builtin}> as swept setting; it is a get-only builtin".format(which_builtin=which_builtin))
@@ -241,7 +241,6 @@ class Sweeper(object):
 
 		# internal sweep properties
 		self._ds_ready   = False # whether or not the dataset has been initialized (and is ready to be written to)
-		self._speedlimit = any([setting.max_ramp_speed is not None for setting in self._swp]) # whether or not any setting has a speed limitation
 		
 		self._axes_loc, self._targ_state, axis = self._mesh.next()
 		# _axes_loc   : set of integer positions along each axis
@@ -250,15 +249,16 @@ class Sweeper(object):
 		if self._do_pre_sweep:
 			self._sweep_phase = 'pre_sweep'
 			self._pre_sweep_progress = 0.0
-			self._pre_sweep_duration = 0.0
+			self._pre_sweep_max_delta_progress = 1.0 # maximum amount to increment progress by per loop
 
 			for n in range(len(self._swp)):
-				if self._swp[n].max_ramp_speed is not None:
-					self._pre_sweep_duration = max([self._pre_sweep_duration, abs(self._targ_state[n]-self._start_rampfrom[n])/self._swp[n].max_ramp_speed])
+				if self._swp[n].max_step_size is not None:
+					if abs(self._targ_state[n]-self._start_rampfrom[n]) > 0:
+						self._pre_sweep_max_delta_progress = min([self._pre_sweep_max_delta_progress, self._swp[n].max_step_size/abs(self._targ_state[n]-self._start_rampfrom[n])])
 			
-			if self._pre_sweep_duration == 0.0:
+			if self._pre_sweep_max_delta_progress == 1.0:
 				self._do_pre_sweep = False
-				#If the pre-sweep isn't constrained by ramp rates, it can be done in one step. This is best achieved by simply not doing a pre-sweep.
+				#If the pre-sweep can be done in one step, it will be taken care of below.
 
 		if not (self._do_pre_sweep):
 			self._sweep_phase = 'sweep'
@@ -298,8 +298,6 @@ class Sweeper(object):
 	def add_parameters(self,parameters):
 		if self._mode != 'sweep':raise ValueError("This function is only usable in sweep mode")
 		self._dataset.add_parameters(parameters,self._ds_ready)
-	def has_speedlimit(self):
-		return bool(self._speedlimit)
 	def done(self):
 		return bool(self._mode == 'done')
 
@@ -328,10 +326,11 @@ class Sweeper(object):
 			if self._do_post_sweep:
 				self._sweep_phase = 'post_sweep'
 				self._post_sweep_progress = 0.0
-				self._post_sweep_duration = 0.0
+				self._post_sweep_max_delta_progress = 1.0
 				for n in range(len(self._swp)):
-					if self._swep[n].max_ramp_speed is not None:
-						self._post_sweep_duration = max([self._post_sweep_duration, abs(self._end_rampto[n]-self._targ_state[n])/self._swp[n].max_ramp_speed])
+					if self._swp[n].max_step_size is not None:
+						if abs(self._end_rampto[n]-self._targ_state[n]) > 0:
+							self._post_sweep_max_delta_progress = min([self._post_sweep_max_delta_progress, self._swp[n].max_step_sizes/abs(self._end_rampto[n]-self._targ_state[n])])
 
 
 			else:
@@ -340,26 +339,27 @@ class Sweeper(object):
 			return
 
 		# reset _progress, calculate new _duration
-		if self._speedlimit:
-			self._ramp_progress = 0.0
-			self._delay_progress = 0.0
+		self._delay_progress = 0.0
+		self._delay_duration = self._axes[next_axis_step].post_ramp_delay * 0.001
 
-			self._ramp_cycle = 'ramp'
-			self._ramp_duration = 0.0
-			for n in range(len(self._swp)):
-				if self._swp[n].max_ramp_speed is not None:
-					self._ramp_duration = max([self._ramp_duration, abs(self._targ_state[n]-self._last_state[n])/self._swp[n].max_ramp_speed])
-			self._ramp_duration = max([self._ramp_duration,self._axes[next_axis_step].min_ramp_duration*0.001]) # Minimum delay set by axis delay (in milliseconds)
+		self._ramp_cycle = 'ramp'
+		self._ramp_progress = 0.0
+		self._ramp_duration = self._axes[next_axis_step].min_ramp_duration*0.001
 
-			self._delay_duration = self._axes[next_axis_step].post_ramp_delay * 0.001
+		self._ramp_max_delta_progress = 1.0
+		for n in range(len(self._swp)):
+			if self._swp[n].max_step_size is not None:
+				if abs(self._targ_state[n]-self._last_state[n]) > 0:
+					self._ramp_max_delta_progress = min([self._ramp_max_delta_progress, self._swp[n].max_step_size/abs(self._targ_state[n]-self._last_state[n])])
+
+
 
 	def advance(self,time_elapsed,output=False):
 		if self._mode != 'sweep': raise ValueError("This function is only usable in sweep mode")
-		if not self._speedlimit : raise ValueError("Cannot advance by time elapsed without speed limit (no swept setting has a speed limit enforced.) To advance the sweep, please use Sweeper.step()")
 		if time_elapsed <= 0    : raise ValueError("time_elapsed must be greater than zero")
 
 		if self._sweep_phase == 'pre_sweep':
-			self._pre_sweep_progress += time_elapsed / self._pre_sweep_duration
+			self._pre_sweep_progress += self._pre_sweep_max_delta_progress # we don't have a min ramp duration here, so just do the maximum delta progress.
 			self._pre_sweep_progress = min([self._pre_sweep_progress,1.0])
 			self._set_state(self._targ_state*self._pre_sweep_progress + self._start_rampfrom*(1-self._pre_sweep_progress))
 
@@ -377,15 +377,20 @@ class Sweeper(object):
 					self._do_measurement()
 
 			elif self._ramp_cycle == 'ramp':
-				self._ramp_progress += time_elapsed / self._ramp_duration if self._ramp_duration else 1.0
+				ramp_delta_progress = time_elapsed / self._ramp_duration if self._ramp_duration else 1.0
+				if ramp_delta_progress > self._ramp_max_delta_progress: ramp_delta_progress = self._ramp_max_delta_progress
+
+
+				self._ramp_progress += ramp_delta_progress
 				self._ramp_progress = min([self._ramp_progress,1.0])
+
 				self._set_state(self._targ_state*self._ramp_progress + self._last_state*(1-self._ramp_progress))
 				if self._ramp_progress >= 1.0:
 					self._ramp_cycle = 'delay'
 					self._delay_progress = 0.0
 
 		elif self._sweep_phase == 'post_sweep':
-			self._post_sweep_progress += time_elapsed / self._post_sweep_duration if self._post_sweep_duration else 1.0
+			self._post_sweep_progress += self._post_sweep_max_delta_progress
 			self._post_sweep_progress = min([self._post_sweep_progress,1.0])
 			self._set_state(self._end_rampto*self._post_sweep_progress + self._targ_state*(1-self._post_sweep_progress))
 			if self._post_sweep_progress >= 1.0:

@@ -118,7 +118,7 @@
           <string notr="true">QLineEdit { background-color: rgb(224,224,224) }</string>
          </property>
          <property name="text">
-          <string>Min ramp duration (ms)</string>
+          <string>Per-point ramp duration</string>
          </property>
         </widget>
        </item>
@@ -317,7 +317,7 @@
              <item>
               <widget class="QLineEdit" name="swp_lbl_max_ramp_rate">
                <property name="text">
-                <string>Max ramp rate</string>
+                <string>Max step size</string>
                </property>
                <property name="readOnly">
                 <bool>true</bool>

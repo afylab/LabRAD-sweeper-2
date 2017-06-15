@@ -1,4 +1,4 @@
-import sys,labrad
+import sys,labrad,time
 from PyQt4 import QtGui as gui, QtCore as core
 from qtdesigner import setup,sweep_runner
 from qtdesigner.setup_widgets import AxisBar,InputDialogSwept,InputDialogRecorded
@@ -6,7 +6,8 @@ from labrad_exclude import SERVERS,SETTINGS
 from components.settings import builtins as BUILTINS
 import sweeper
 
-strn = lambda s:str(s) if s is not None else ""
+strn   = lambda s:str(s)   if s is not None else ""
+floatn = lambda s:float(s) if s is not None else None
 
 class proto_swept_setting(object):
 	"""Houses the data associated with a swept setting that hasn't been added to a sweep yet"""
@@ -28,6 +29,7 @@ class proto_swept_setting(object):
 		self.rad_input_units = []
 		self.rad_sweep_slot = None
 		self.rad_status     = None
+		self.max_step_size  = None
 	def rad_reset(self):
 		self.rad_input_count=0
 		self.rad_inputs=[]
@@ -40,6 +42,12 @@ class proto_swept_setting(object):
 		for n in range(n_axes+1):
 			try:
 				float(self.coeff[n])
+			except:
+				return False
+
+		if not(self.max_step_size is None):
+			try:
+				float(self.max_step_size)
 			except:
 				return False
 
@@ -150,17 +158,27 @@ class SweepWindow(gui.QMainWindow,sweep_runner.Ui_MainWindow):
 		self.bar_progress.setRange(0,self.steps_total)
 
 		self.timer = core.QTimer(self)
-		self.timer.setInterval(20) # 1/50 of a second, for now
+		self.timer.setInterval(75) # 75 ms ~ device communication latency
+		self.timer_first_call = True # whether or not the call of the timer event loop is the first one.
 		self.timer.timeout.connect(self.timer_event)
 		self.timer.start()
 
 	def timer_event(self):
-		# assume 20 milliseconds passed
 		if self.done:return
 		if self.paused:return
 
 		if self._sweep._mode == 'sweep':
-			self._sweep.advance(0.02)
+		
+			if self.timer_first_call == True:
+				self.timer_first_call = False
+				self._sweep.advance(0.075) # on first call, assume exactly 75ms have passed
+				self.last_time = time.time()
+				
+			else:
+				this_time = time.time()
+				self._sweep.advance(this_time - self.last_time) # on subsequent calls, advance by the time elapsed since last call of this function
+				self.last_time = this_time
+				
 		if self._sweep._mode == 'done':
 			self.done = True
 
@@ -336,6 +354,7 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.swp_dd_rad_device.activated.connect(self.update_swept_setting_data)
 		self.swp_dd_rad_setting.activated.connect(self.update_swept_setting_data)
 		self.swp_inp_coeff_const.textEdited.connect(self.update_swept_setting_data)
+		self.swp_inp_max_ramp_rate.textEdited.connect(self.update_swept_setting_data)
 		self.swp_inp_coeff_0.textEdited.connect(self.update_swept_setting_data)
 		self.swp_inp_coeff_1.textEdited.connect(self.update_swept_setting_data)
 		self.swp_inp_coeff_2.textEdited.connect(self.update_swept_setting_data)
@@ -396,13 +415,13 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 
 		for swp in self.swept_settings:
 			if swp.type == 'VDS':
-				s.add_swept_setting('vds',swp.label,10.0,ID=swp.vds_id,name=swp.vds_name)
+				s.add_swept_setting('vds',swp.label,floatn(swp.max_step_size),ID=swp.vds_id,name=swp.vds_name)
 			if swp.type == 'LabRAD':
 				inputs = list(swp.rad_inputs)
 				inputs.pop(swp.rad_sweep_slot)
-				s.add_swept_setting('dev',swp.label,10.0,setting=swp.rad_strings,inputs=inputs,var_slot=swp.rad_sweep_slot)
+				s.add_swept_setting('dev',swp.label,floatn(swp.max_step_size),setting=swp.rad_strings,inputs=inputs,var_slot=swp.rad_sweep_slot)
 			if swp.type == 'Builtin':
-				s.add_swept_setting('builtin',swp.label,10.0,which_builtin=swp.builtin_type)
+				s.add_swept_setting('builtin',swp.label,floatn(swp.max_step_size),which_builtin=swp.builtin_type)
 
 		for rec in self.recorded_settings:
 			if rec.type == 'VDS':
@@ -653,6 +672,8 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		rad_setting = self.swept_settings[n].rad_setting
 		rad_status  = self.swept_settings[n].rad_status
 
+		max_step_size = self.swept_settings[n].max_step_size
+
 		self.swp_inp_label.setText(label)
 		self.swp_dd_type.setCurrentIndex(_type)
 		self.swp_dd_vds.setCurrentIndex(-1)
@@ -665,6 +686,7 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.swp_dd_rad_setting.setCurrentIndex(rad_setting)
 		self.swp_lbl_rad_input_req.setText(strn(rad_status))
 
+		self.swp_inp_max_ramp_rate.setText(strn(max_step_size))
 
 		self.swp_inp_coeff_const.setText(cc)
 		self.swp_inp_coeff_0.setText(c0)
@@ -712,6 +734,7 @@ class SetupWindow(gui.QMainWindow,setup.Ui_setup):
 		self.swept_settings[n].rad_server   = self.swp_dd_rad_server.currentIndex()
 		self.swept_settings[n].rad_device   = self.swp_dd_rad_device.currentIndex()
 		self.swept_settings[n].rad_setting  = self.swp_dd_rad_setting.currentIndex()
+		self.swept_settings[n].max_step_size = str(self.swp_inp_max_ramp_rate.text()) if len(str(self.swp_inp_max_ramp_rate.text())) else None
 		self.swept_settings[n].coeff        = [str(self.swp_inp_coeff_const.text()),str(self.swp_inp_coeff_0.text()),str(self.swp_inp_coeff_1.text()),str(self.swp_inp_coeff_2.text()),str(self.swp_inp_coeff_3.text()),str(self.swp_inp_coeff_4.text()),str(self.swp_inp_coeff_5.text())]
 		self.check_swept()
 	def update_swp_rad_dds(self):

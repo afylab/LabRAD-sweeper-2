@@ -6,11 +6,11 @@ builtins = {
 }
 
 class Setting(object):
-	def __init__(self,connection=None,max_ramp_speed=None,label=None):
+	def __init__(self,connection=None,max_step_size=None,label=None):
 		self.connection     = connection
-		self.max_ramp_speed = max_ramp_speed
-		if max_ramp_speed is not None:
-			if max_ramp_speed <= 0:raise ValueError("max_ramp_speed cannot be zero (or less than zero)")
+		self.max_step_size  = max_step_size
+		if max_step_size is not None:
+			if max_step_size <= 0:raise ValueError("max_step_size cannot be zero (or less than zero)")
 
 		self.label   = label if label else None
 		self.kind    = None  # what kind of setting this is. 'vds' or 'dev' or 'builtin'
@@ -32,10 +32,10 @@ class Setting(object):
 	def getlabel(self):
 		return self.label
 
-	def set_max_ramp_speed(self,max_ramp_speed):
-		if max_ramp_speed is not None:
-			if max_ramp_speed <= 0:raise ValueError("max_ramp_speed cannot be zero (or less than zero)")
-		self.max_ramp_speed = max_ramp_speed
+	def set_max_step_size(self,max_step_size):
+		if max_step_size is not None:
+			if max_step_size <= 0:raise ValueError("max_step_size cannot be zero (or less than zero)")
+		self.max_step_size = max_step_size
 
 	def connect(self,connection):
 		"""Supplies a LabRAD connection to the Setting. Not necessary if one was supplied on init."""
